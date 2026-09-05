@@ -3,7 +3,7 @@ Interactive CLI for Kibo.
 """
 
 import sys
-from .logs import log_user_input, log_ai_response
+from .logs import user_input as log_user_input, ai_response as log_ai_response, info, error
 
 
 def start_cli():
@@ -17,27 +17,27 @@ def start_cli():
 
     while True:
         try:
-            user_input = input("You: ").strip()
+            user_msg = input("You: ").strip()
         except (EOFError, KeyboardInterrupt):
             print("\nBye!")
             break
 
-        if not user_input:
+        if not user_msg:
             continue
 
-        if user_input.lower() in ("quit", "exit", "q"):
+        if user_msg.lower() in ("quit", "exit", "q"):
             print("Bye!")
             break
 
-        log_user_input(user_input)
+        log_user_input("cli", user_msg)
 
         try:
-            result = ask(user_input)
+            result = ask(user_msg)
             response = result.get("text", "")
             print(f"\nKibo: {response}\n")
-            log_ai_response(response)
+            log_ai_response("cli", response, result.get("tool_calls"), result.get("results"))
         except Exception as e:
-            print(f"\nError: {e}\n")
+            error("cli", str(e))
 
 
 if __name__ == "__main__":
