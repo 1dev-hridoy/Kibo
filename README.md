@@ -1,12 +1,28 @@
-# Kibo
+<p align="center">
+  <img src="https://raw.githubusercontent.com/1dev-hridoy/1dev-hridoy/refs/heads/main/kibo_banner.png" alt="Kibo" width="600">
+</p>
 
-Your PC, controlled by chat.
+<h1 align="center">Kibo</h1>
+
+<p align="center">
+  <b>Your PC, controlled by chat.</b><br>
+  57 tools • Local AI • No cloud
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/version-1.0.0-blue" alt="Version">
+  <img src="https://img.shields.io/badge/python-3.10+-green" alt="Python">
+  <img src="https://img.shields.io/badge/license-MIT-green" alt="License">
+  <img src="https://img.shields.io/badge/tools-57-purple" alt="Tools">
+</p>
+
+---
 
 Kibo is a local AI agent that runs on your computer. Talk to it in
 terminal, browser, or Telegram — it handles the rest.
 
 Set volume, take screenshots, open apps, check battery, run commands,
-manage files, stream music, record voice. 57 tools, all local.
+manage files, stream music, record voice. **57 tools**, all local.
 
 **No cloud. No API keys. Your data stays on your machine.**
 
@@ -39,27 +55,38 @@ cd ~/kibo
 
 ---
 
+## Update
+
+```bash
+cd ~/kibo
+./update.sh
+```
+
+---
+
+## Uninstall
+
+```bash
+cd ~/kibo
+./uninstall.sh
+```
+
+---
+
 ## What can it do
 
-**System** — volume, brightness, battery, screenshots, lock screen, shutdown
-
-**Files** — list, create, delete, move, read files & folders
-
-**Apps** — open any app, browser, website
-
-**Terminal** — run any shell command (`ls`, `git status`, `python --version`)
-
-**Network** — wifi info, scan networks, check internet
-
-**Media** — play music/videos from URLs, record voice, text-to-speech
-
-**Clipboard** — copy, paste, sync across devices
-
-**Processes** — list running apps, kill processes
-
-**Packages** — install/uninstall software
-
-**And more** — 57 tools total, just ask naturally
+| Category | Tools |
+|----------|-------|
+| **System** | Volume, brightness, battery, screenshots, lock screen, shutdown |
+| **Files** | List, create, delete, move, read files & folders |
+| **Apps** | Open any app, browser, website |
+| **Terminal** | Run any shell command (`ls`, `git status`, `python --version`) |
+| **Network** | WiFi info, scan networks, check internet |
+| **Media** | Play music/videos from URLs, record voice, text-to-speech |
+| **Clipboard** | Copy, paste, sync across devices |
+| **Processes** | List running apps, kill processes |
+| **Packages** | Install/uninstall software |
+| **Advanced** | Remote terminal, app launcher, clipboard sync, media streamer, voice gateway |
 
 ---
 
@@ -81,6 +108,8 @@ models                      # switch AI models
 
 ## Models
 
+Kibo supports two local AI models:
+
 | Model | Size | Speed | Best for |
 |-------|------|-------|----------|
 | Needle 2 | 14 MB | Fast | Quick commands, low RAM |
@@ -92,8 +121,34 @@ Switch anytime: type `needle` or `gemma`
 
 ## Requirements
 
-- Python 3.9+
+- Python 3.10+
 - Linux, Windows, or macOS
+
+---
+
+## Project Structure
+
+```
+kibo/
+├── agent/
+│   ├── __init__.py         # Version
+│   ├── main.py             # Entry point
+│   ├── cli.py              # Interactive CLI
+│   ├── config.py           # Platform config
+│   ├── logs.py             # Logging
+│   ├── model_manager.py    # AI model switching
+│   ├── core/               # AI engine, fast-path, prompt
+│   ├── runner/             # Tool runners (18 modules)
+│   ├── tools/              # Tool registry (57 tools)
+│   ├── web/                # Flask web UI
+│   └── telegram/           # Telegram bot
+├── install.sh              # Linux/macOS installer
+├── install.ps1             # Windows installer
+├── run.sh                  # Quick launcher
+├── update.sh               # Updater
+├── uninstall.sh            # Uninstaller
+└── pyproject.toml          # Package config
+```
 
 ---
 
@@ -103,4 +158,6 @@ MIT
 
 ---
 
-Built by [1dev-hridoy](https://github.com/1dev-hridoy)
+<p align="center">
+  Built by <a href="https://github.com/1dev-hridoy">1dev-hridoy</a>
+</p>
