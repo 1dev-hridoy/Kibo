@@ -1,0 +1,122 @@
+name: Kibo CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+
+      - name: Verify package import
+        run: |
+          python -c "import agent; print(f'Kibo v{agent.__version__}')"
+
+      - name: Verify tools load
+        run: |
+          python -c "from agent.tools import ALL_TOOLS; print(f'{len(ALL_TOOLS)} tools loaded')"
+
+      - name: Verify core imports
+        run: |
+          python -c "from agent.core import ask; print('core OK')"
+          python -c "from agent.config import WEB_HOST, WEB_PORT; print('config OK')"
+          python -c "from agent.model_manager import MODELS; print(f'models: {list(MODELS.keys())}')"
+
+      - name: Syntax check
+        run: |
+          python -m py_compile agent/__init__.py
+          python -m py_compile agent/__main__.py
+          python -m py_compile agent/main.py
+          python -m py_compile agent/cli.py
+          python -m py_compile agent/config.py
+          python -m py_compile agent/logs.py
+          python -m py_compile agent/model_manager.py
+          python -m py_compile agent/core/__init__.py
+          python -m py_compile agent/core/ask.py
+          python -m py_compile agent/core/engine.py
+          python -m py_compile agent/core/fastpath.py
+          python -m py_compile agent/core/prompt.py
+          python -m py_compile agent/core/smalltalk.py
+          python -m py_compile agent/runner/__init__.py
+          python -m py_compile agent/runner/common.py
+          python -m py_compile agent/runner/apps.py
+          python -m py_compile agent/runner/audio.py
+          python -m py_compile agent/runner/battery.py
+          python -m py_compile agent/runner/clipboard.py
+          python -m py_compile agent/runner/disk.py
+          python -m py_compile agent/runner/display.py
+          python -m py_compile agent/runner/files.py
+          python -m py_compile agent/runner/logs_viewer.py
+          python -m py_compile agent/runner/media.py
+          python -m py_compile agent/runner/notifications.py
+          python -m py_compile agent/runner/packages.py
+          python -m py_compile agent/runner/power.py
+          python -m py_compile agent/runner/processes.py
+          python -m py_compile agent/runner/screen.py
+          python -m py_compile agent/runner/system_info.py
+          python -m py_compile agent/runner/wifi.py
+          python -m py_compile agent/tools/__init__.py
+          python -m py_compile agent/tools/advanced.py
+          python -m py_compile agent/tools/apps.py
+          python -m py_compile agent/tools/communication.py
+          python -m py_compile agent/tools/hardware.py
+          python -m py_compile agent/tools/media.py
+          python -m py_compile agent/tools/network.py
+          python -m py_compile agent/tools/sysadmin.py
+          python -m py_compile agent/tools/system.py
+          python -m py_compile agent/web/__init__.py
+          python -m py_compile agent/web/app.py
+          python -m py_compile agent/telegram/__init__.py
+          python -m py_compile agent/telegram/bot.py
+
+      - name: Shell script lint
+        run: |
+          bash -n install.sh
+          bash -n run.sh
+          bash -n uninstall.sh
+          bash -n update.sh
+
+      - name: Run tests
+        run: |
+          python -m unittest discover tests -v
+
+  install-test:
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Test install script syntax
+        run: bash -n install.sh
+
+      - name: Test run script syntax
+        run: bash -n run.sh
+
+      - name: Test update script syntax
+        run: bash -n update.sh
+
+      - name: Test uninstall script syntax
+        run: bash -n uninstall.sh
