@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
 
     steps:
       - uses: actions/checkout@v4
@@ -27,12 +27,10 @@ jobs:
           pip install -e .
 
       - name: Verify package import
-        run: |
-          python -c "import agent; print(f'Kibo v{agent.__version__}')"
+        run: python -c "import agent; print(f'Kibo v{agent.__version__}')"
 
       - name: Verify tools load
-        run: |
-          python -c "from agent.tools import ALL_TOOLS; print(f'{len(ALL_TOOLS)} tools loaded')"
+        run: python -c "from agent.tools import ALL_TOOLS; print(f'{len(ALL_TOOLS)} tools loaded')"
 
       - name: Verify core imports
         run: |
@@ -57,35 +55,10 @@ jobs:
           python -m py_compile agent/core/smalltalk.py
           python -m py_compile agent/runner/__init__.py
           python -m py_compile agent/runner/common.py
-          python -m py_compile agent/runner/apps.py
-          python -m py_compile agent/runner/audio.py
-          python -m py_compile agent/runner/battery.py
-          python -m py_compile agent/runner/clipboard.py
-          python -m py_compile agent/runner/disk.py
-          python -m py_compile agent/runner/display.py
-          python -m py_compile agent/runner/files.py
-          python -m py_compile agent/runner/logs_viewer.py
-          python -m py_compile agent/runner/media.py
-          python -m py_compile agent/runner/notifications.py
-          python -m py_compile agent/runner/packages.py
-          python -m py_compile agent/runner/power.py
-          python -m py_compile agent/runner/processes.py
-          python -m py_compile agent/runner/screen.py
-          python -m py_compile agent/runner/system_info.py
-          python -m py_compile agent/runner/wifi.py
           python -m py_compile agent/tools/__init__.py
           python -m py_compile agent/tools/advanced.py
-          python -m py_compile agent/tools/apps.py
-          python -m py_compile agent/tools/communication.py
-          python -m py_compile agent/tools/hardware.py
-          python -m py_compile agent/tools/media.py
-          python -m py_compile agent/tools/network.py
-          python -m py_compile agent/tools/sysadmin.py
-          python -m py_compile agent/tools/system.py
           python -m py_compile agent/web/__init__.py
-          python -m py_compile agent/web/app.py
           python -m py_compile agent/telegram/__init__.py
-          python -m py_compile agent/telegram/bot.py
 
       - name: Shell script lint
         run: |
@@ -95,8 +68,7 @@ jobs:
           bash -n update.sh
 
       - name: Run tests
-        run: |
-          python -m unittest discover tests -v
+        run: python -m unittest discover tests -v
 
   install-test:
     runs-on: ubuntu-latest

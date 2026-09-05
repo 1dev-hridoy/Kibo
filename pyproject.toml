@@ -7,7 +7,7 @@ name = "kibo"
 version = "1.0.0"
 description = "Kibo — local AI agent that controls your PC through chat"
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 license = "MIT"
 authors = [
     {name = "1dev-hridoy", email = "hridoy@example.com"}
