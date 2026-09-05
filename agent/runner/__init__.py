@@ -1,0 +1,155 @@
+"""Agent runner subpackage — cross-platform native capability layer."""
+
+# common
+from agent.runner.common import (
+    CREATE_NO_WINDOW,
+    _find,
+    _pkg_hint,
+    run,
+    run_cmd,
+    run_cmd_json,
+    powershell,
+)
+
+# notifications
+from agent.runner.notifications import notify, toast, speak
+
+# display
+from agent.runner.display import set_brightness
+
+# battery
+from agent.runner.battery import has_battery, battery_status
+
+# clipboard
+from agent.runner.clipboard import clipboard_set, clipboard_get
+
+# audio
+from agent.runner.audio import (
+    volume_info,
+    set_volume,
+    _RECORD_STATE,
+    record_audio_start,
+    record_audio_stop,
+)
+
+# wifi
+from agent.runner.wifi import _local_ip, wifi_info, wifi_scan
+
+# system_info
+from agent.runner.system_info import (
+    system_info,
+    device_info,
+    has_internet,
+    system_stats,
+)
+
+# apps
+from agent.runner.apps import (
+    _startfile,
+    launch,
+    open_url,
+    open_path,
+    copy_to_clipboard,
+    download_file,
+)
+
+# media
+from agent.runner.media import camera_photo
+
+# screen
+from agent.runner.screen import take_screenshot, lock_screen
+
+# power
+from agent.runner.power import power_action
+
+# files
+from agent.runner.files import (
+    list_files,
+    list_installed_apps,
+    file_create,
+    file_delete,
+    file_move,
+    file_read,
+)
+
+# processes
+from agent.runner.processes import list_processes, kill_process
+
+# disk
+from agent.runner.disk import disk_usage, system_temperature
+
+# logs_viewer
+from agent.runner.logs_viewer import view_logs
+
+# packages
+from agent.runner.packages import package_install, package_uninstall
+
+__all__ = [
+    # common
+    "CREATE_NO_WINDOW",
+    "_find",
+    "_pkg_hint",
+    "run",
+    "run_cmd",
+    "run_cmd_json",
+    "powershell",
+    # notifications
+    "notify",
+    "toast",
+    "speak",
+    # display
+    "set_brightness",
+    # battery
+    "has_battery",
+    "battery_status",
+    # clipboard
+    "clipboard_set",
+    "clipboard_get",
+    # audio
+    "volume_info",
+    "set_volume",
+    "_RECORD_STATE",
+    "record_audio_start",
+    "record_audio_stop",
+    # wifi
+    "_local_ip",
+    "wifi_info",
+    "wifi_scan",
+    # system_info
+    "system_info",
+    "device_info",
+    "has_internet",
+    "system_stats",
+    # apps
+    "_startfile",
+    "launch",
+    "open_url",
+    "open_path",
+    "copy_to_clipboard",
+    "download_file",
+    # media
+    "camera_photo",
+    # screen
+    "take_screenshot",
+    "lock_screen",
+    # power
+    "power_action",
+    # files
+    "list_files",
+    "list_installed_apps",
+    "file_create",
+    "file_delete",
+    "file_move",
+    "file_read",
+    # processes
+    "list_processes",
+    "kill_process",
+    # disk
+    "disk_usage",
+    "system_temperature",
+    # logs_viewer
+    "view_logs",
+    # packages
+    "package_install",
+    "package_uninstall",
+]

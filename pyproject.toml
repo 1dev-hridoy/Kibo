@@ -1,0 +1,41 @@
+[build-system]
+requires = ["setuptools>=77.0.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "kibo"
+version = "1.0.0"
+description = "Kibo — local AI agent that controls your PC through chat"
+readme = "README.md"
+requires-python = ">=3.9"
+license = "MIT"
+authors = [
+    {name = "1dev-hridoy", email = "hridoy@example.com"}
+]
+dependencies = [
+    "cactus-needle>=2.0.11",
+    "flask>=3.0.0",
+    "pyTelegramBotAPI>=4.12.0",
+    "pydantic>=2.0.0",
+    "waitress>=3.0.0",
+    "python-dotenv>=1.0.0",
+]
+
+[project.optional-dependencies]
+functiongemma = ["llama-cpp-python>=0.3.0"]
+all = ["llama-cpp-python>=0.3.0"]
+windows = []
+linux = []
+
+[project.scripts]
+kibo = "agent.main:main"
+
+[project.urls]
+Homepage = "https://github.com/1dev-hridoy/Kibo"
+Repository = "https://github.com/1dev-hridoy/Kibo"
+Issues = "https://github.com/1dev-hridoy/Kibo/issues"
+
+# Package lives in ./agent/ subdirectory
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["agent", "agent.*"]

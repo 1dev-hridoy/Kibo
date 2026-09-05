@@ -1,0 +1,114 @@
+"""
+Public entry point for the agent — the ask() function.
+"""
+
+from datetime import datetime
+from .engine import _engine_lock, _tools, _agent_loop, _extract, _detect_media, reload_backend
+from . import fastpath as _fp
+from .smalltalk import _smalltalk
+from agent.model_manager import (
+    switch_model, get_models_display, get_active_model,
+    resolve_model_name, is_model_available, MODELS
+)
+
+
+def ask(text: str) -> dict:
+    """Answer a user message.
+
+    Returns {"text": <reply>, "tool_calls": [...], "results": [...],
+             "media": {"type": "screenshot", "path": "..."} or None}.
+    """
+    with _engine_lock:
+        chat_reply = _smalltalk(text)
+        if chat_reply:
+            return {"text": chat_reply, "tool_calls": [], "results": [],
+                    "media": None}
+
+        spec = _fp._fastpath(text)
+
+        # ── Model management commands ──────────────────────────────────
+        if isinstance(spec, tuple) and spec[0] == "__switch_model__":
+            _, model_name = spec
+            current = get_active_model()
+            current_name = MODELS.get(current, {}).get("name", current)
+
+            resolved = resolve_model_name(model_name)
+
+            # If they typed just the model name (not "switch X"), show status
+            if model_name == resolved:
+                if resolved == current:
+                    return {
+                        "text": (
+                            f"Current model: {current_name}\n"
+                            f"Already using this model.\n"
+                            f"Type 'gemma' or 'needle' to switch."
+                        ),
+                        "tool_calls": [], "results": [], "media": None
+                    }
+                if not is_model_available(resolved):
+                    target_name = MODELS.get(resolved, {}).get("name", resolved)
+                    return {
+                        "text": (
+                            f"Current model: {current_name}\n"
+                            f"Target model: {target_name} (not downloaded)\n"
+                            f"Run: ./install.sh --fresh to download it."
+                        ),
+                        "tool_calls": [], "results": [], "media": None
+                    }
+
+            success, msg = switch_model(model_name)
+            if success:
+                reload_backend()
+            return {"text": msg, "tool_calls": [], "results": [],
+                    "media": None}
+
+        if isinstance(spec, tuple) and spec[0] == "__models__":
+            return {"text": get_models_display(), "tool_calls": [],
+                    "results": [], "media": None}
+
+        if isinstance(spec, tuple) and spec[0] == "__current_model__":
+            current = get_active_model()
+            info = MODELS.get(current, {})
+            return {
+                "text": (
+                    f"Current model: {info.get('name', current)}\n"
+                    f"Maker: {info.get('maker', 'Unknown')}\n"
+                    f"Size: {info.get('size', 'Unknown')}\n"
+                    f"Type 'models' to see all options."
+                ),
+                "tool_calls": [], "results": [], "media": None
+            }
+
+        if spec == "clock":
+            return {"text": datetime.now().strftime("It's %I:%M %p."),
+                    "tool_calls": [], "results": [], "media": None}
+        if spec == "date":
+            return {"text": datetime.now().strftime("Today is %A, %B %d, %Y."),
+                    "tool_calls": [], "results": [], "media": None}
+        if spec is not None:
+            executed, outs = [], []
+            for name, args in spec:
+                executed.append({"name": name, "arguments": args})
+                try:
+                    outs.append(str(_tools[name](**args)))
+                except Exception as exc:
+                    outs.append(f"Error: {exc}")
+            for e in executed:
+                if e["name"] == "set_volume":
+                    _fp._last_topic = "volume"
+                elif e["name"] == "set_screen_brightness":
+                    _fp._last_topic = "brightness"
+            media = _detect_media(executed, outs)
+            return {"text": "\n".join(outs), "tool_calls": executed,
+                    "results": outs, "media": media}
+
+        response, executed, results = _agent_loop(text)
+        reply, calls = _extract(response, results)
+        media = _detect_media(
+            [{"name": c.get("name"), "arguments": c.get("arguments") or {}}
+             for c in calls] if calls else executed, results)
+        return {"text": reply,
+                "tool_calls": [{"name": c.get("name"),
+                                "arguments": c.get("arguments") or {}}
+                               for c in calls] if calls else executed,
+                "results": results, "media": media}

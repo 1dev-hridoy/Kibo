@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kibo</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/water.css@2/out/water.css">
+  <style>
+    body { max-width: 880px; margin: 0 auto; }
+    header { display: flex; justify-content: space-between; align-items: baseline; }
+    header h1 { margin: 0; }
+    #msgs { min-height: 45vh; max-height: 55vh; overflow-y: auto;
+            display: flex; flex-direction: column; gap: 0.9rem;
+            padding: 1rem; margin: 1rem 0;
+            border: 1px solid var(--border); border-radius: 6px; }
+    .msg { max-width: 85%; }
+    .msg.user { align-self: flex-end; }
+    .msg.agent { align-self: flex-start; max-width: 95%; }
+    .msg .who { font-size: 0.7rem; opacity: 0.7; margin-bottom: 0.2rem; }
+    .msg .bubble { padding: 0.6rem 0.9rem; border-radius: 6px;
+                   border: 1px solid var(--border); background: var(--background-alt); }
+    .msg.user .bubble { background: var(--button-base); color: #fff; }
+    form.chat { display: flex; gap: 0.6rem; }
+    form.chat input { flex: 1; margin: 0; }
+    form.chat button { margin: 0; }
+    .qa { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+          gap: 0.5rem; }
+    .qa button { margin: 0; font-size: 0.78rem; padding: 0.45rem 0.6rem; text-align: left; }
+    details { margin-top: 0.4rem; font-size: 0.78rem; }
+    details pre { margin: 0.3rem 0 0; white-space: pre-wrap; }
+    footer { font-size: 0.75rem; opacity: 0.75; margin-top: 1rem; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Kibo</h1>
+    <span>Online — local PC control (57 tools)</span>
+  </header>
+
+  <div id="msgs">
+    <div class="msg agent">
+      <div class="who">Kibo</div>
+      <div class="bubble">Ready. Tell me what to do on this PC — I understand natural language.</div>
+    </div>
+  </div>
+
+  <form class="chat" id="chat">
+    <input id="input" placeholder="e.g. set volume to 80, take screenshot, list processes..." autocomplete="off">
+    <button type="submit">Send</button>
+  </form>
+
+  <h3>Quick actions</h3>
+  <div class="qa">
+    <button onclick="sendCmd('Check battery status')">Battery</button>
+    <button onclick="sendCmd('Get volume levels')">Volume level</button>
+    <button onclick="sendCmd('Make the sound 100%')">Volume 100%</button>
+    <button onclick="sendCmd('Set brightness to 80')">Brightness 80%</button>
+    <button onclick="sendCmd('Take a screenshot')">Screenshot</button>
+    <button onclick="sendCmd('Lock the screen')">Lock screen</button>
+    <button onclick="sendCmd('WiFi info')">WiFi info</button>
+    <button onclick="sendCmd('Scan WiFi networks')">WiFi scan</button>
+    <button onclick="sendCmd('Show device info')">PC info</button>
+    <button onclick="sendCmd('System info')">System info</button>
+    <button onclick="sendCmd('Show CPU and RAM usage')">CPU / RAM</button>
+    <button onclick="sendCmd('Take a photo')">Webcam photo</button>
+    <button onclick="sendCmd('Copy hello to clipboard')">Clipboard set</button>
+    <button onclick="sendCmd('Open YouTube')">YouTube</button>
+    <button onclick="sendCmd('Download https://example.com')">Download</button>
+    <button onclick="sendCmd('Show a notification saying done')">Notify</button>
+    <button onclick="sendCmd('What time is it')">Time</button>
+    <button onclick="sendCmd('List files in home directory')">Files</button>
+    <button onclick="sendCmd('List installed apps')">Installed apps</button>
+    <button onclick="sendCmd('Show running processes')">Processes</button>
+    <button onclick="sendCmd('Show disk usage')">Disk usage</button>
+    <button onclick="sendCmd('Show system temperature')">Temperature</button>
+    <button onclick="sendCmd('View system logs')">System logs</button>
+    <button onclick="sendCmd('Read file /etc/hostname')">Read file</button>
+    <button onclick="sendCmd('What tools do you have')">All tools</button>
+  </div>
+
+  <footer>Themed by <a href="https://watercss.kognise.dev/">water.css</a> &middot; Needle local engine &middot; nothing leaves this device</footer>
+
+  <script>
+    const msgs = document.getElementById('msgs');
+    const input = document.getElementById('input');
+
+    function esc(s) {
+      const d = document.createElement('div');
+      d.textContent = s == null ? '' : String(s);
+      return d.innerHTML;
+    }
+
+    function addMsg(who, cls, html) {
+      const d = document.createElement('div');
+      d.className = 'msg ' + cls;
+      d.innerHTML = '<div class="who">' + who + ' &middot; ' +
+        new Date().toLocaleTimeString() + '</div><div class="bubble">' +
+        html + '</div>';
+      msgs.appendChild(d);
+      msgs.scrollTop = msgs.scrollHeight;
+    }
+
+    function sendCmd(text) {
+      input.value = text;
+      document.getElementById('chat').requestSubmit();
+    }
+
+    document.getElementById('chat').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const text = input.value.trim();
+      if (!text) return;
+      addMsg('You', 'user', esc(text));
+      input.value = '';
+      try {
+        const res = await fetch('/api/chat', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({message: text})
+        });
+        const data = await res.json();
+        if (data.error) { addMsg('Kibo', 'agent', 'Error: ' + esc(data.error)); return; }
+        let html = esc(data.response || '...');
+        if (data.media && data.media.url) {
+          html += '<br><img src="' + esc(data.media.url) + '" alt="' +
+                  esc(data.media.type) + '" style="max-width:100%;border-radius:6px;margin-top:0.5rem;cursor:pointer" onclick="window.open(this.src)">';
+        }
+        if (data.tools && data.tools.length) {
+          html += '<details><summary>' + data.tools.length + ' tool call' +
+                  (data.tools.length > 1 ? 's' : '') + '</summary><pre><code>' +
+                  esc(data.tools.join('\n')) + '</code></pre></details>';
+        }
+        addMsg('Kibo', 'agent', html);
+      } catch (err) {
+        addMsg('Kibo', 'agent', 'Error: ' + esc(err.message));
+      }
+    });
+  </script>
+</body>
+</html>

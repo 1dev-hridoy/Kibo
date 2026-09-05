@@ -1,0 +1,59 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+venv/
+venv-arch/
+ENV/
+env/
+.env
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Build artifacts
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Agent data
+.agent_model
+.agent_model_config.json
+.agent_recent_apps.json
+.agent_clipboard_sync/
+.agent_models/
+telegram_bot.pid
+*.log
+
+# System files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Project specific
+.bin/
+harness_photo.jpg
+agent_photos/
+agent_recordings/
+agent_screenshots/
+
+# Logs
+logs/
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.backup
+.telegram_bot.pid
