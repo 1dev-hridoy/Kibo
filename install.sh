@@ -260,7 +260,12 @@ select_model() {
     printf "  ${BOLD}└─────────────────────────────────────────────────┘${NC}\n"
     printf "\n"
     printf "  ${BOLD}Enter 1, 2, or 3 [${GREEN}default: 3${NC}${BOLD}]: ${NC}"
-    read -r MODEL_CHOICE
+    if [ -t 0 ]; then
+        read -r MODEL_CHOICE
+    else
+        MODEL_CHOICE="3"
+        printf "3 (piped install — using default)\n"
+    fi
     MODEL_CHOICE="${MODEL_CHOICE:-3}"
 }
 
