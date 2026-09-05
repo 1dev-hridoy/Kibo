@@ -14,8 +14,16 @@ manage files, stream music, record voice. 57 tools, all local.
 
 ## Install
 
+**Quick (one command):**
 ```bash
 curl -sL https://raw.githubusercontent.com/1dev-hridoy/Kibo/main/install.sh | bash
+```
+
+**With model selection:**
+```bash
+curl -sLO https://raw.githubusercontent.com/1dev-hridoy/Kibo/main/install.sh
+chmod +x install.sh
+./install.sh
 ```
 
 ---

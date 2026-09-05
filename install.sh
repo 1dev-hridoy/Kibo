@@ -259,14 +259,16 @@ select_model() {
     printf "  ${BOLD}│${NC}                                                 ${BOLD}│${NC}\n"
     printf "  ${BOLD}└─────────────────────────────────────────────────┘${NC}\n"
     printf "\n"
-    printf "  ${BOLD}Enter 1, 2, or 3 [${GREEN}default: 3${NC}${BOLD}]: ${NC}"
+    printf "  ${BOLD}Enter 1, 2, or 3 [${GREEN}default: 1${NC}${BOLD}]: ${NC}"
     if [ -t 0 ]; then
         read -r MODEL_CHOICE
     else
-        MODEL_CHOICE="3"
-        printf "3 (piped install — using default)\n"
+        MODEL_CHOICE="1"
+        printf "1 (piped install — default)\n"
+        printf "  ${DIM}Tip: download and run directly for model selection:${NC}\n"
+        printf "  ${DIM}curl -sLO https://raw.githubusercontent.com/1dev-hridoy/Kibo/main/install.sh && ./install.sh${NC}\n"
     fi
-    MODEL_CHOICE="${MODEL_CHOICE:-3}"
+    MODEL_CHOICE="${MODEL_CHOICE:-1}"
 }
 
 
