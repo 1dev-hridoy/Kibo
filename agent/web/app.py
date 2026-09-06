@@ -8,6 +8,7 @@ import json
 import secrets
 
 from flask import Flask, request, jsonify, render_template_string, send_file, session, redirect, url_for
+from flask_socketio import SocketIO, emit
 from agent.core import ask
 from agent.config import WEB_HOST, WEB_PORT
 from agent.tools import ALL_TOOLS
@@ -15,6 +16,7 @@ from agent.logs import user_input, ai_response, error, startup
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode="threading")
 
 _template_dir = os.path.dirname(os.path.abspath(__file__))
 _template_path = os.path.join(_template_dir, "template.html")
@@ -230,12 +232,128 @@ def screen_info():
     return jsonify({"info": get_screen_info()})
 
 
+
+_terminal_sessions = {}
+
+
+@socketio.on("terminal:create")
+def handle_terminal_create(data):
+    """Create a new terminal session."""
+    from .terminal import create_session
+    cols = data.get("cols", 80)
+    rows = data.get("rows", 24)
+    session_id, msg = create_session(cols=cols, rows=rows)
+    _terminal_sessions[request.sid] = session_id
+    emit("terminal:created", {"session_id": session_id, "message": msg})
+
+
+@socketio.on("terminal:input")
+def handle_terminal_input(data):
+    """Handle terminal input."""
+    from .terminal import write_to_session
+    session_id = _terminal_sessions.get(request.sid)
+    if session_id:
+        write_to_session(session_id, data.get("input", ""))
+  
+        output = ""
+        while True:
+            chunk = read_from_session(session_id)
+            if not chunk:
+                break
+            output += chunk
+        if output:
+            emit("terminal:output", {"output": output})
+
+
+@socketio.on("terminal:resize")
+def handle_terminal_resize(data):
+    """Resize terminal."""
+    from .terminal import resize_session
+    session_id = _terminal_sessions.get(request.sid)
+    if session_id:
+        resize_session(session_id, data.get("cols", 80), data.get("rows", 24))
+
+
+@socketio.on("terminal:close")
+def handle_terminal_close():
+    """Close terminal session."""
+    from .terminal import close_session
+    session_id = _terminal_sessions.pop(request.sid, None)
+    if session_id:
+        close_session(session_id)
+
+
+@socketio.on("disconnect")
+def handle_disconnect():
+    """Clean up on disconnect."""
+    from .terminal import close_session
+    session_id = _terminal_sessions.pop(request.sid, None)
+    if session_id:
+        close_session(session_id)
+
+
+def read_from_session(session_id):
+    """Read from terminal session."""
+    from .terminal import read_from_session as _read
+    return _read(session_id)
+
+
+
+
+
+
+@app.route("/api/macros")
+def get_macros():
+    """List all macros."""
+    from agent.core.macros import list_macros, _ensure_dir, MACROS_DIR
+    import os
+    _ensure_dir()
+    macros = []
+    for f in os.listdir(MACROS_DIR):
+        if f.endswith(".json"):
+            path = os.path.join(MACROS_DIR, f)
+            try:
+                with open(path) as fh:
+                    m = json.load(fh)
+                    macros.append({
+                        "name": m.get("name", f[:-5]),
+                        "steps": m.get("step_count", len(m.get("steps", []))),
+                    })
+            except Exception:
+                pass
+    return jsonify({"macros": macros})
+
+
+@app.route("/api/macros/start", methods=["POST"])
+def start_macro():
+    """Start recording a macro."""
+    from agent.core.macros import start_recording
+    data = request.get_json(force=True)
+    name = data.get("name", "unnamed")
+    result = start_recording(name)
+    return jsonify({"success": True, "message": result})
+
+
+@app.route("/api/macros/stop", methods=["POST"])
+def stop_macro():
+    """Stop recording."""
+    from agent.core.macros import stop_recording
+    result = stop_recording()
+    return jsonify({"success": True, "message": result})
+
+
+@app.route("/api/macros/replay", methods=["POST"])
+def replay_macro_api():
+    """Replay a macro."""
+    from agent.core.macros import replay_macro
+    data = request.get_json(force=True)
+    name = data.get("name", "")
+    result = replay_macro(name)
+    return jsonify({"success": True, "message": result})
+
+
 def start_web(host: str = WEB_HOST, port: int = WEB_PORT):
-    """Start the web server."""
+    """Start the web server with WebSocket support."""
     startup("Web", f"http://{host}:{port}")
     print(f"Kibo Web UI: http://{host}:{port}")
-    try:
-        from waitress import serve
-        serve(app, host=host, port=port)
-    except ImportError:
-        app.run(host=host, port=port, debug=False)
+    socketio.run(app, host=host, port=port, debug=False, allow_unsafe_werkzeug=True)

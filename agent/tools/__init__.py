@@ -45,6 +45,14 @@ from agent.tools.automation import (
     check_system_alerts, get_alert_summary,
     schedule_agent_task, schedule_shell_task,
 )
+from agent.tools.macros import (
+    start_macro_recording, stop_macro_recording, replay_macro,
+    list_macros, delete_macro, get_macro_status,
+)
+from agent.tools.multi_pc import (
+    register_remote_pc, unregister_remote_pc, list_remote_pcs,
+    switch_to_pc, get_current_pc, ping_remote_pc, execute_on_remote_pc,
+)
 
 ALL_TOOLS = [
     # System (10)
@@ -85,4 +93,11 @@ ALL_TOOLS = [
     # Automation (4)
     check_system_alerts, get_alert_summary,
     schedule_agent_task, schedule_shell_task,
+   
+    start_macro_recording, stop_macro_recording, replay_macro,
+    list_macros, delete_macro, get_macro_status,
+
+  
+    register_remote_pc, unregister_remote_pc, list_remote_pcs,
+    switch_to_pc, get_current_pc, ping_remote_pc, execute_on_remote_pc,
 ]

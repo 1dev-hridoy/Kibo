@@ -129,6 +129,8 @@
             <button onclick="clearChat()">Clear Chat</button>
             <button onclick="loadHistory()">Load History</button>
             <button onclick="document.getElementById('screen-dialog').showModal()">Live Screen</button>
+            <button onclick="openTerminal()">Terminal</button>
+            <button onclick="document.getElementById('macro-dialog').showModal()">Macros</button>
         </div>
 
         <div id="msgs">
@@ -205,6 +207,52 @@
                 <button onclick="refreshScreen()">Refresh</button>
                 <button onclick="document.getElementById('screen-dialog').close()">Close</button>
             </div>
+        </dialog>
+
+        <dialog id="terminal-dialog">
+            <h3>Terminal</h3>
+            <div
+                id="terminal-container"
+                style="
+                    background: #1e1e1e;
+                    color: #d4d4d4;
+                    padding: 10px;
+                    border-radius: 6px;
+                    font-family: monospace;
+                    font-size: 13px;
+                    height: 400px;
+                    overflow-y: auto;
+                    white-space: pre-wrap;
+                "
+            ></div>
+            <br />
+            <div style="display: flex; gap: 0.5rem">
+                <input
+                    id="terminal-input"
+                    placeholder="Type command..."
+                    style="flex: 1; font-family: monospace"
+                    onkeydown="
+                        if (event.key === 'Enter') {
+                            sendTerminalInput();
+                            event.preventDefault();
+                        }
+                    "
+                />
+                <button onclick="sendTerminalInput()">Send</button>
+                <button onclick="document.getElementById('terminal-dialog').close()">Close</button>
+            </div>
+        </dialog>
+
+        <dialog id="macro-dialog">
+            <h3>Macros</h3>
+            <div id="macro-list" style="margin-bottom: 1rem">Loading...</div>
+            <div style="display: flex; gap: 0.5rem">
+                <input id="macro-name" placeholder="Macro name" />
+                <button onclick="startMacroRec()">Record</button>
+                <button onclick="stopMacroRec()">Stop</button>
+            </div>
+            <br />
+            <button onclick="document.getElementById('macro-dialog').close()">Close</button>
         </dialog>
 
         <script>
@@ -385,6 +433,107 @@
                     refreshScreen();
                 }
             }
+
+            let termSocket = null;
+            let termConnected = false;
+
+            function openTerminal() {
+                document.getElementById("terminal-dialog").showModal();
+                if (!termConnected) {
+                    connectTerminal();
+                }
+            }
+
+            function connectTerminal() {
+                termSocket = io();
+                termSocket.on("connect", () => {
+                    termConnected = true;
+                    termSocket.emit("terminal:create", { cols: 80, rows: 24 });
+                });
+                termSocket.on("terminal:created", data => {
+                    addTerminalOutput("Terminal session: " + data.session_id + "\n");
+                });
+                termSocket.on("terminal:output", data => {
+                    addTerminalOutput(data.output);
+                });
+                termSocket.on("disconnect", () => {
+                    termConnected = false;
+                });
+            }
+
+            function addTerminalOutput(text) {
+                const container = document.getElementById("terminal-container");
+                container.textContent += text;
+                container.scrollTop = container.scrollHeight;
+            }
+
+            function sendTerminalInput() {
+                const input = document.getElementById("terminal-input");
+                const text = input.value;
+                if (text && termSocket) {
+                    termSocket.emit("terminal:input", { input: text + "\n" });
+                    input.value = "";
+                }
+            }
+
+            let macroRecording = false;
+
+            async function loadMacros() {
+                try {
+                    const res = await fetch("/api/macros");
+                    const data = await res.json();
+                    const list = document.getElementById("macro-list");
+                    if (!data.macros || data.macros.length === 0) {
+                        list.textContent = "No macros saved";
+                        return;
+                    }
+                    list.innerHTML = "";
+                    data.macros.forEach(m => {
+                        const btn = document.createElement("button");
+                        btn.textContent = m.name + " (" + m.steps + " steps)";
+                        btn.onclick = () => replayMacro(m.name);
+                        btn.style.display = "block";
+                        btn.style.width = "100%";
+                        btn.style.margin = "0.2rem 0";
+                        list.appendChild(btn);
+                    });
+                } catch (e) {
+                    document.getElementById("macro-list").textContent = "Error loading macros";
+                }
+            }
+
+            async function startMacroRec() {
+                const name = document.getElementById("macro-name").value.trim();
+                if (!name) {
+                    alert("Enter a macro name");
+                    return;
+                }
+                await fetch("/api/macros/start", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ name }),
+                });
+                macroRecording = true;
+                addMsg("Kibo", "agent", "Recording macro: " + name);
+            }
+
+            async function stopMacroRec() {
+                await fetch("/api/macros/stop", { method: "POST" });
+                macroRecording = false;
+                addMsg("Kibo", "agent", "Macro recording stopped");
+                loadMacros();
+            }
+
+            async function replayMacro(name) {
+                await fetch("/api/macros/replay", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ name }),
+                });
+                addMsg("Kibo", "agent", "Replaying macro: " + name);
+            }
+
+            document.getElementById("macro-dialog").addEventListener("open", loadMacros);
         </script>
     </body>
 </html>
