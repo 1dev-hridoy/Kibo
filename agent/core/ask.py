@@ -96,6 +96,11 @@ def ask(text: str) -> dict:
             add_exchange(text, reply)
             return {"text": reply,
                     "tool_calls": [], "results": [], "media": None}
+        if isinstance(spec, tuple) and spec[0] == "__reply__":
+            reply = spec[1]
+            add_exchange(text, reply)
+            return {"text": reply,
+                    "tool_calls": [], "results": [], "media": None}
         if spec is not None:
             executed, outs = [], []
             for name, args in spec:

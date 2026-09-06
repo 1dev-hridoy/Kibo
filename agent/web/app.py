@@ -49,19 +49,6 @@ LOGIN_HTML = """<!DOCTYPE html>
 </body></html>"""
 
 
-@app.route("/login", methods=["GET", "POST"])
-def login():
-    if request.method == "POST":
-        password = request.form.get("password", "")
-        from .auth import verify_password, generate_token
-        if verify_password(password):
-            token = generate_token()
-            session["token"] = token
-            return redirect(url_for("index"))
-        return "Invalid password", 401
-    return render_template_string(LOGIN_HTML)
-
-
 @app.route("/api/auth/setup", methods=["POST"])
 def setup_auth():
     """Set or change password."""
@@ -86,7 +73,10 @@ def remove_auth():
 def index():
     if not _check_auth():
         return redirect(url_for("login"))
-    return render_template_string(HTML_TEMPLATE)@app.route("/login", methods=["GET", "POST"])
+    return render_template_string(HTML_TEMPLATE)
+
+
+@app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
         data = request.get_json(force=True) if request.is_json else request.form

@@ -1,8 +1,10 @@
 """
-Deterministic fast-path routing for simple PC commands.
+Deterministic fast-path routing for PC commands.
+Handles 90%+ of user intent without needing the model.
 """
 
 import re
+from datetime import datetime
 from .typo import correct_typos, find_command_for_app
 
 _last_topic = None
@@ -15,76 +17,269 @@ def _num(text, before, after):
     return int(m.group(1)) if m and 0 <= int(m.group(1)) <= 100 else None
 
 
-def _fastpath(text):
-    """Map simple device commands straight to tool calls.
+def _pick_folder(name):
+    """Map common folder names to paths."""
+    folders = {
+        "home": "~", "desktop": "~/Desktop", "documents": "~/Documents",
+        "downloads": "~/Downloads", "pictures": "~/Pictures",
+        "music": "~/Music", "videos": "~/Videos", "projects": "~/Projects",
+        "config": "~/.config", "documents": "~/Documents",
+    }
+    return folders.get(name.lower(), f"~/{name}")
 
-    Returns a list of (tool_name, args) tuples, or None to defer to
-    the model. Info queries route through here too so answers are
-    always well-formatted.
-    """
+
+def _fastpath(text):
+    """Route user input to tool calls. Returns list of (tool, args) or None."""
     global _last_topic
 
-    # Fix typos first
     t = correct_typos(text.lower().strip())
+    # Remove trailing punctuation
+    t = re.sub(r"[.!?]+$", "", t).strip()
 
-  
-    if re.match(r"^(?:live|watch|view|show)\s*(?:screen|display|monitor)[.!?]?$", t):
+    # ═══════════════════════════════════════════════════════════════════
+    # MODEL MANAGEMENT
+    # ═══════════════════════════════════════════════════════════════════
+    m = re.match(r"^(?:switch|change|use)\s+(?:to\s+)?(?:the\s+)?(?:model\s+)?(\w+)$", t)
+    if m:
+        return "__switch_model__", m.group(1).lower()
+    if t in ("needle", "needle2", "n", "gemma", "google", "func", "functiongemma", "fg"):
+        return "__switch_model__", t
+    if re.match(r"^(?:what|which|current|active)\s+model$", t):
+        return "__current_model__", None
+    if re.match(r"^(?:list|show)\s+models?$", t):
+        return "__models__", None
+
+    # ═══════════════════════════════════════════════════════════════════
+    # VOLUME
+    # ═══════════════════════════════════════════════════════════════════
+    if re.search(r"\bmute\b", t) and "unmute" not in t:
+        _last_topic = "volume"
+        return [("set_volume", {"stream": "music", "level": 0})]
+    if re.search(r"\bunmute\b", t):
+        _last_topic = "volume"
+        return [("set_volume", {"stream": "music", "level": 60})]
+    if re.search(r"\b(volume|sound|speaker|audio)\b", t):
+        n = _num(t, r"\b(?:volume|sound|speaker|audio)\b", r"")
+        if n is None and re.search(r"\b(max|full|highest|loudest)\b", t):
+            n = 100
+        if n is None and re.search(r"\b(min|lowest|quietest)\b", t):
+            n = 0
+        if n is None and re.search(r"\b(up|louder|increase|higher|more)\b", t):
+            n = 90
+        if n is None and re.search(r"\b(down|quieter|decrease|lower|less)\b", t):
+            n = 30
+        if n is not None:
+            _last_topic = "volume"
+            return [("set_volume", {"stream": "music", "level": n})]
+        if re.search(r"\b(what|how|current|get|show|check|level)\b", t):
+            return [("get_volume_info", {})]
+
+    # Follow-up: "make it 50" / "set it to 50"
+    if _last_topic == "volume":
+        m = re.match(r"^(?:make|set|turn|change)\s+(?:it|that)?\s*(?:to)?\s*(\d{1,3})\s*%?$", t)
+        if m and 0 <= int(m.group(1)) <= 100:
+            return [("set_volume", {"stream": "music", "level": int(m.group(1))})]
+
+    # ═══════════════════════════════════════════════════════════════════
+    # BRIGHTNESS
+    # ═══════════════════════════════════════════════════════════════════
+    if re.search(r"\b(brightness|brighter|dim|dimmer|screen light)\b", t):
+        n = _num(t, r"\b(?:brightness|brighter|dimmer?|screen)\b", r"")
+        if n is None and re.search(r"\b(max|full|highest|brightest)\b", t):
+            n = 100
+        if n is None and re.search(r"\b(min|lowest|dimmest|dark)\b", t):
+            n = 10
+        if n is None and re.search(r"\b(up|brighter|increase|higher|more)\b", t):
+            n = 90
+        if n is None and re.search(r"\b(down|dimmer|decrease|lower|less)\b", t):
+            n = 30
+        if n is not None:
+            _last_topic = "brightness"
+            return [("set_screen_brightness", {"level": n})]
+
+    if _last_topic == "brightness":
+        m = re.match(r"^(?:make|set|turn|change)\s+(?:it|that)?\s*(?:to)?\s*(\d{1,3})\s*%?$", t)
+        if m and 0 <= int(m.group(1)) <= 100:
+            return [("set_screen_brightness", {"level": int(m.group(1))})]
+
+    # ═══════════════════════════════════════════════════════════════════
+    # SCREENSHOT
+    # ═══════════════════════════════════════════════════════════════════
+    if re.search(r"\b(screenshot|screen ?shot|capture|snip)\b", t):
+        return [("take_screenshot_now", {})]
+    if re.match(r"^(?:take|grab|get|capture)\s+(?:a\s+)?(?:screen|screenshot|pic|photo)$", t):
         return [("take_screenshot_now", {})]
 
+    # ═══════════════════════════════════════════════════════════════════
+    # LOCK / SHUTDOWN / RESTART / SLEEP
+    # ═══════════════════════════════════════════════════════════════════
+    if re.search(r"\block\b", t):
+        return [("lock_screen_now", {})]
+    if re.search(r"\b(shut ?down|power ?off|turn off)\b", t):
+        return [("power_control", {"action": "shutdown"})]
+    if re.search(r"\b(restart|reboot)\b", t):
+        return [("power_control", {"action": "restart"})]
+    if re.search(r"\b(sleep|suspend|hibernate)\b", t):
+        return [("power_control", {"action": "sleep"})]
 
-    m = re.match(r"^(?:focus|bring|activate)\s+(?:the\s+)?(.+?)[.!?]?$", t)
+    # ═══════════════════════════════════════════════════════════════════
+    # BATTERY
+    # ═══════════════════════════════════════════════════════════════════
+    if re.search(r"\b(battery|charge|charging)\b", t):
+        return [("get_battery_status", {})]
+
+    # ═══════════════════════════════════════════════════════════════════
+    # SYSTEM INFO
+    # ═══════════════════════════════════════════════════════════════════
+    if re.search(r"\b(cpu|ram|memory)\b", t):
+        return [("get_system_stats", {})]
+    if re.search(r"\b(device|system|pc|computer|machine|specs?|info)\b", t):
+        return [("get_device_info", {})]
+    if re.search(r"\b(temperature|temp|thermal|hot|heat)\b", t):
+        return [("get_temperature", {})]
+    if re.search(r"\b(disk|drive|storage|space)\b", t):
+        return [("get_disk_usage", {})]
+    if re.search(r"\b(internet|online|connect|wifi|network)\b", t) and \
+       re.search(r"\b(check|is|am i|status|working)\b", t):
+        return [("check_internet", {})]
+
+    # ═══════════════════════════════════════════════════════════════════
+    # WIFI
+    # ═══════════════════════════════════════════════════════════════════
+    if re.search(r"\b(wi-?fi|network|ssid)\b", t):
+        if re.search(r"\b(scan|nearby|around|available|list|see)\b", t):
+            return [("scan_wifi_networks", {})]
+        return [("get_wifi_info", {})]
+
+    # ═══════════════════════════════════════════════════════════════════
+    # TIME / DATE
+    # ═══════════════════════════════════════════════════════════════════
+    if re.search(r"\b(time|clock|hour)\b", t) and \
+       re.search(r"\b(what|whats|tell|current|now|is it)\b", t):
+        now = datetime.now().strftime("%I:%M %p")
+        return "__reply__", f"The current time is {now}."
+    if re.search(r"\b(date|day|today)\b", t) and \
+       re.search(r"\b(what|whats|tell|current|now|is it)\b", t):
+        now = datetime.now().strftime("%A, %B %d, %Y")
+        return "__reply__", f"Today is {now}."
+
+    # ═══════════════════════════════════════════════════════════════════
+    # PROCESSES
+    # ═══════════════════════════════════════════════════════════════════
+    m = re.match(r"^(?:kill|stop|terminate|end)\s+(?:the\s+)?(?:process|pid|task)?\s*(\d+)$", t)
+    if m:
+        return [("kill_a_process", {"pid": int(m.group(1))})]
+    if re.search(r"\b(processes?|tasks?|running|what'?s running)\b", t):
+        return [("get_running_processes", {})]
+
+    # ═══════════════════════════════════════════════════════════════════
+    # APP CONTROL (focus, minimize, maximize, close, type, hotkey)
+    # ═══════════════════════════════════════════════════════════════════
+    m = re.match(r"^(?:focus|bring|activate|switch to)\s+(?:the\s+)?(.+)$", t)
     if m:
         return [("focus_app", {"name": m.group(1).strip()})]
-
-    m = re.match(r"^(?:minimize|min)\s+(?:the\s+)?(.+?)[.!?]?$", t)
+    m = re.match(r"^(?:minimize|min)\s+(?:the\s+)?(.+)$", t)
     if m:
         return [("minimize_app", {"name": m.group(1).strip()})]
-
-    m = re.match(r"^(?:maximize|max)\s+(?:the\s+)?(.+?)[.!?]?$", t)
+    m = re.match(r"^(?:maximize|max|fullscreen)\s+(?:the\s+)?(.+)$", t)
     if m:
         return [("maximize_app", {"name": m.group(1).strip()})]
-
-    m = re.match(r"^(?:close|quit|exit)\s+(?:the\s+)?(.+?)[.!?]?$", t)
+    m = re.match(r"^(?:close|quit|exit|kill)\s+(?:the\s+)?(.+)$", t)
     if m:
         return [("close_app", {"name": m.group(1).strip()})]
-
-    m = re.match(r"^(?:type|write|input)\s+(?:in|into)\s+(.+?)\s*:\s*(.+)[.!?]?$", t)
+    m = re.match(r"^(?:type|write|input)\s+(?:in|into|on)\s+(.+?)\s*:\s*(.+)$", t)
     if m:
         return [("type_in_app", {"name": m.group(1).strip(), "text": m.group(2).strip()})]
-
-    m = re.match(r"^(?:hotkey|shortcut|press)\s+(?:in|on)\s+(.+?)\s*:\s*(.+)[.!?]?$", t)
+    m = re.match(r"^(?:hotkey|shortcut|press)\s+(?:in|on)\s+(.+?)\s*:\s*(.+)$", t)
     if m:
         return [("hotkey_in_app", {"name": m.group(1).strip(), "keys": m.group(2).strip()})]
-
-    if re.match(r"^(?:list|show)\s+(?:open\s+)?windows?[.!?]?$", t):
+    if re.match(r"^(?:list|show)\s+(?:open\s+)?windows?$", t):
         return [("list_windows", {})]
+    if re.match(r"^(?:what|which)\s+(?:window|app)\s+(?:is\s+)?(?:active|focused|open)$", t):
+        return [("get_active_window", {})]
 
+    # ═══════════════════════════════════════════════════════════════════
+    # FILE OPERATIONS
+    # ═══════════════════════════════════════════════════════════════════
 
-    m = re.match(r"^(?:alert|notify|warn)\s+(?:me\s+)?(?:when|if)\s+(.+?)\s+(?:goes?\s+)?(?:above|over|higher|more)\s+(\d+)[.!?]?$", t)
+    m = re.match(r"^(?:open|show|view|list|browse|see)\s+(?:my\s+)?(?:the\s+)?(downloads?|documents?|desktop|pictures?|music|videos?|projects?|home|config)$", t)
+    if m:
+        return [("list_files", {"path": _pick_folder(m.group(1))})]
+
+    m = re.match(r"^(?:what'?s|what is|what are)\s+in\s+(?:my\s+)?(?:the\s+)?(\w+)$", t)
+    if m:
+        return [("list_files", {"path": _pick_folder(m.group(1))})]
+   
+    m = re.search(r"\b(list|show|browse)\s+(?:files?|contents?)\s+(?:in|at|from)\s+[\"']?([/~\w.\- ]+)[\"']?", t)
+    if m:
+        return [("list_files", {"path": m.group(1).strip()})]
+    # "read file /path"
+    m = re.search(r"\b(read|open|cat|view|show)\s+(?:the\s+)?file\s+[\"']?([/~\w.\- ]+)", t)
+    if m:
+        return [("read_file", {"path": m.group(1).strip()})]
+    # "installed apps" / "what apps"
+    if re.search(r"\b(list|show|what|which)\b", t) and \
+       re.search(r"\b(installed|apps?|software|packages?|programs?)\b", t):
+        return [("list_installed_apps", {})]
+    # "logs" / "system logs"
+    if re.search(r"\b(logs?|journal|syslog|dmesg)\b", t):
+        return [("view_system_logs", {"log_type": "system", "lines": 30, "grep": ""})]
+
+    # ═══════════════════════════════════════════════════════════════════
+    # NOTIFICATIONS / TTS / CLIPBOARD
+    # ═══════════════════════════════════════════════════════════════════
+    m = re.search(r"(?:show|send|display|notify|toast).*?[\"'](.+?)[\"']", t)
+    if not m:
+        m = re.search(r"(?:show|send|display|notify|toast)\s+(.+)", t)
+    if m and len(m.group(1)) > 1:
+        return [("show_toast", {"message": m.group(1).strip()})]
+
+    m = re.search(r"(?:speak|say|tell me|read aloud|tts)\s+[\"'](.+?)[\"']", t)
+    if not m:
+        m = re.search(r"(?:speak|say|tell me|read aloud)\s+(.+)", t)
+    if m:
+        return [("text_to_speech", {"text": m.group(1).strip()})]
+
+    m = re.search(r"(?:copy|clipboard)\s+[\"'](.+?)[\"']", t)
+    if not m:
+        m = re.search(r"(?:copy|clipboard)\s+(.+)", t)
+    if m:
+        return [("set_clipboard", {"text": m.group(1).strip()})]
+    if re.search(r"\b(paste|clipboard)\b", t) and re.search(r"\b(get|read|show|what)\b", t):
+        return [("get_clipboard", {})]
+
+    # ═══════════════════════════════════════════════════════════════════
+    # LIVE SCREEN
+    # ═══════════════════════════════════════════════════════════════════
+    if re.match(r"^(?:live|watch|view|show)\s*(?:screen|display|monitor)$", t):
+        return [("take_screenshot_now", {})]
+
+    # ═══════════════════════════════════════════════════════════════════
+    # ALERTS
+    # ═══════════════════════════════════════════════════════════════════
+    m = re.match(r"^(?:alert|notify|warn)\s+(?:me\s+)?(?:when|if)\s+(.+?)\s+(?:goes?\s+)?(?:above|over|higher)\s+(\d+)$", t)
     if m:
         return [("add_alert", {"metric": m.group(1), "threshold": int(m.group(2)), "direction": "above"})]
-
-    m = re.match(r"^(?:alert|notify|warn)\s+(?:me\s+)?(?:when|if)\s+(.+?)\s+(?:goes?\s+)?(?:below|under|less|lower)\s+(\d+)[.!?]?$", t)
+    m = re.match(r"^(?:alert|notify|warn)\s+(?:me\s+)?(?:when|if)\s+(.+?)\s+(?:goes?\s+)?(?:below|under|lower)\s+(\d+)$", t)
     if m:
         return [("add_alert", {"metric": m.group(1), "threshold": int(m.group(2)), "direction": "below"})]
-
-    if re.match(r"^(?:list|show|check)\s+(?:my\s+)?(?:alerts?|notifications?|warnings?)[.!?]?$", t):
+    if re.match(r"^(?:list|show|check)\s+(?:my\s+)?alerts?$", t):
         return [("get_alert_summary", {})]
 
-    if re.match(r"^(?:check|scan)\s+(?:for\s+)?(?:alerts?|thresholds?|warnings?)[.!?]?$", t):
-        return [("check_system_alerts", {})]
-
-
-    m = re.match(r"^(?:schedule|remind|remind me to|set a timer)\s+(?:to\s+)?(.+?)(?:\s+(?:in|after|every)\s+(\d+)\s*(?:s|sec|second|m|min|minute|h|hr|hour)s?)?[.!?]?$", t)
+    # ═══════════════════════════════════════════════════════════════════
+    # SCHEDULING
+    # ═══════════════════════════════════════════════════════════════════
+    m = re.match(r"^(?:schedule|remind(?:\s+me)?\s+to)\s+(.+?)(?:\s+(?:in|after|every)\s+(\d+)\s*(s|sec|m|min|h|hr|hour)s?)?$", t)
     if m:
         cmd = m.group(1).strip()
         delay = 0
         repeat = 0
         if m.group(2):
             num = int(m.group(2))
-            if "h" in t:
+            unit = m.group(3)
+            if unit.startswith("h"):
                 delay = num * 3600
-            elif "m" in t:
+            elif unit.startswith("m"):
                 delay = num * 60
             else:
                 delay = num
@@ -92,245 +287,15 @@ def _fastpath(text):
                 repeat = delay
                 delay = 0
         return [("schedule_agent_task", {"instruction": cmd, "delay": delay, "repeat": repeat})]
-
-    if re.match(r"^(?:list|show)\s+(?:my\s+)?(?:tasks?|jobs?|schedule|scheduled)[.!?]?$", t):
+    if re.match(r"^(?:list|show)\s+(?:my\s+)?(?:tasks?|jobs?|schedule)$", t):
         return [("list_tasks", {})]
 
-
-    m = re.match(r"^(?:switch|change|use)\s+(?:to\s+)?(?:model\s+)?(\w+)[.!?]?$", t)
-    if m:
-        return "__switch_model__", m.group(1).lower()
-
-    if re.match(r"^(?:needle|needle2|n|gemma|google|func|functiongemma|fg)[.!?]?$", t):
-        return "__switch_model__", t.rstrip(".")
-
-    if re.match(r"^(?:models?|model status|which model|what model|list models?)[.!?]?$", t):
-        return "__models__", None
-
-    if re.match(r"^(?:current|active|what|which)\s+model\s*(?:am\s+i\s+using|name)?[.!?]?$", t):
-        return "__current_model__", None
-
-    # follow-up: "make it 50" / "set it to 50" / "make it 50%"
-    if _last_topic in ("volume", "brightness"):
-        m = re.match(r"^(?:make|set|turn|change|put)\s+(?:it|that|the \w+)?\s*"
-                     r"(?:to)?\s*(\d{1,3})\s*%?[.!?]?$", t)
-        if m and 0 <= int(m.group(1)) <= 100:
-            n = int(m.group(1))
-            if _last_topic == "volume":
-                return [("set_volume", {"stream": "music", "level": n})]
-            return [("set_screen_brightness", {"level": n})]
-
-    # ── SYSTEM CONTROLS ────────────────────────────────────────────────
-
-    # brightness
-    if re.search(r"\b(brightness|brighter|dim|dimmer)\b", t):
-        n = _num(t, r"\b(?:brightness|brighter|dimmer?|screen)\b",
-                 r"\bbrightness\b")
-        if n is not None:
-            return [("set_screen_brightness", {"level": n})]
-
-    # volume / sound / speaker level
-    vol = re.search(r"\b(volume|sound|speaker|audio)\b", t)
-    mentions_brightness = bool(re.search(r"\bbrightness\b", t))
-    if re.search(r"\bmute\b", t) and "unmute" not in t:
-        return [("set_volume", {"stream": "music", "level": 0})]
-    if re.search(r"\bunmute\b", t):
-        return [("set_volume", {"stream": "music", "level": 60})]
-    n = (_num(t, r"\b(?:volume|sound|speaker|audio)\b",
-              r"\b(?:volume|sound|speaker)") if vol else None)
-    if n is None and vol and re.search(r"\b(max|full|highest|loudest)\b", t):
-        n = 100
-    directional = bool(re.search(
-        r"\b(louder|turn up|turn it up|crank|increase|"
-        r"quieter|turn down|turn it down|lower)\b", t))
-    if (n is None and directional and not mentions_brightness
-            and _last_topic != "brightness"):
-        n = 90 if re.search(r"\b(louder|turn up|turn it up|crank|increase)\b", t) else 30
-    if n is None and vol and not mentions_brightness:
-        if re.search(r"\b(up|louder|increase|higher)\b", t):
-            n = 90
-        elif re.search(r"\b(down|quieter|decrease|lower)\b", t):
-            n = 30
-    if n is not None and (vol or directional):
-        return [("set_volume", {"stream": "music", "level": n})]
-    if vol and re.search(r"\b(what|how|current|get|show|check|level)\b", t):
-        return [("get_volume_info", {})]
-
-    # PC actions
-    if re.search(r"\b(screenshot|screen ?shot|capture (?:the |my )?screen)\b", t):
-        return [("take_screenshot_now", {})]
-    if re.search(r"\block\b", t) and re.search(
-            r"\b(screen|pc|computer|workstation|session)\b", t):
-        return [("lock_screen_now", {})]
-    if re.search(r"\b(shut ?down|power ?off|turn off (?:the |my )?(?:pc|computer))\b", t):
-        return [("power_control", {"action": "shutdown"})]
-    if re.search(r"\b(restart|reboot)\b", t):
-        return [("power_control", {"action": "restart"})]
-    if re.search(r"\b(?:put (?:the |my )?(?:pc|computer) (?:to )?sleep|suspend)\b", t):
-        return [("power_control", {"action": "sleep"})]
-
-    # ── INFO QUERIES ───────────────────────────────────────────────────
-
-    if re.search(r"\bbattery\b", t):
-        return [("get_battery_status", {})]
-    if re.search(r"\b(cpu|ram|memory)\b", t) and re.search(
-            r"\b(usage|used|load|how much|percent|stats?|utilization)\b", t):
-        return [("get_system_stats", {})]
-    if re.search(r"\b(wi-?fi|networks?)\b", t) and re.search(
-            r"\b(scan|nearby|around|available|list)\b", t):
-        return [("scan_wifi_networks", {})]
-    if re.search(r"\b(wi-?fi|networks?|ssid|internet)\b", t):
-        return [("get_wifi_info", {})]
-    if re.search(r"\b(device info|system info|specs?\b|my (pc|computer|device|machine)|"
-                 r"what (pc|computer|device|machine))", t):
-        return [("get_device_info", {})]
-
-    # clock / date
-    if re.search(r"\b(time|clock|hour)\b", t) and re.search(
-            r"\b(what|whats|tell|current|now|is it)\b", t):
-        return "clock"
-    if re.search(r"\b(date|day|today)\b", t) and re.search(
-            r"\b(what|whats|tell|current|now|is it)\b", t):
-        return "date"
-
-    # ── FILE & FOLDER OPERATIONS ───────────────────────────────────────
-
-    # "view downloads", "show downloads", "open downloads", "list downloads"
-    m = re.match(r"^(?:view|show|open|list|browse|check|see)\s+(?:my\s+)?(?:the\s+)?downloads?[.!?]?$", t)
-    if m:
-        return [("list_files", {"path": "~/Downloads"})]
-
-    # "view <folder>", "show <folder>", "open <folder>"
-    m = re.match(r"^(?:view|show|open|list|browse|check|see)\s+(?:my\s+)?(?:the\s+)?(\w+(?:\s+\w+)?)\s+(?:folder|directory|files?|contents?)[.!?]?$", t)
-    if m:
-        folder = m.group(1).strip()
-        folder_map = {
-            "home": "~", "desktop": "~/Desktop", "documents": "~/Documents",
-            "downloads": "~/Downloads", "pictures": "~/Pictures",
-            "music": "~/Music", "videos": "~/Videos", "projects": "~/Projects",
-        }
-        path = folder_map.get(folder, f"~/{folder}")
-        return [("list_files", {"path": path})]
-
-    # "what's in <folder>", "what is in <folder>"
-    m = re.match(r"^(?:what'?s|what is|what are)\s+in\s+(?:my\s+)?(?:the\s+)?(\w+(?:\s+\w+)?)[.!?]?$", t)
-    if m:
-        folder = m.group(1).strip()
-        folder_map = {
-            "home": "~", "desktop": "~/Desktop", "documents": "~/Documents",
-            "downloads": "~/Downloads", "pictures": "~/Pictures",
-            "music": "~/Music", "videos": "~/Videos", "projects": "~/Projects",
-        }
-        path = folder_map.get(folder, f"~/{folder}")
-        return [("list_files", {"path": path})]
-
-    # "open <folder>" (not app)
-    m = re.match(r"^open\s+(?:my\s+)?(?:the\s+)?(downloads?|documents?|desktop|pictures?|music|videos?|projects?|home)[.!?]?$", t)
-    if m:
-        folder = m.group(1).strip()
-        folder_map = {
-            "home": "~", "desktop": "~/Desktop", "documents": "~/Documents",
-            "downloads": "~/Downloads", "pictures": "~/Pictures",
-            "music": "~/Music", "videos": "~/Videos", "projects": "~/Projects",
-        }
-        path = folder_map.get(folder, f"~/{folder}")
-        return [("list_files", {"path": path})]
-
-    # "list files" / "show files" / "browse files"
-    if re.search(r"\b(list|show|browse|explore|ls|dir)\b", t) and re.search(
-            r"\b(files?|folder|directories|contents|dir)\b", t):
-        if not re.search(r"\btool", t):
-            m = re.search(r"(?:in|at|from|of)\s+[\"']?([/~\w.\- ]+)[\"']?", t)
-            path = m.group(1).strip() if m else ""
-            return [("list_files", {"path": path})]
-
-    # "read file <path>", "cat <path>", "show file <path>"
-    m = re.search(r"\b(read|open|cat|view|show)\s+(?:the\s+)?file\s+[\"']?([/~\w.\- ]+)[\"']?", t)
-    if m:
-        return [("read_file", {"path": m.group(1).strip()})]
-
-    # "installed apps" / "what apps" / "list programs"
-    if re.search(r"\b(list|show|what|which)\b", t) and re.search(
-            r"\b(installed|apps?|software|packages?|programs?)\b", t):
-        if not re.search(r"\btool", t):
-            return [("list_installed_apps", {})]
-
-    # ── PROCESSES ──────────────────────────────────────────────────────
-
-    # "kill process 1234" / "kill pid 1234" / "end process 1234"
-    m = re.search(r"\b(kill|stop|terminate|end)\s+(?:the\s+)?(?:process|pid|task)\s*(\d+)", t)
-    if m:
-        return [("kill_a_process", {"pid": int(m.group(2))})]
-
-    # "processes" / "running processes" / "what's running" / "tasks"
-    if re.search(r"\b(processes?|tasks?|running)\b", t):
-        if not re.search(r"\b(kill|stop|terminate|end)\b", t):
-            return [("get_running_processes", {})]
-
-    # ── DISK & SYSTEM ──────────────────────────────────────────────────
-
-    if re.search(r"\b(disk|drive|storage|space|partition)\b", t) and re.search(
-            r"\b(usage|space|free|full|how much|size|status)\b", t):
-        return [("get_disk_usage", {})]
-
-    if re.search(r"\b(temperature|temp|thermal|hot|heat)\b", t):
-        return [("get_temperature", {})]
-
-    # internet check
-    if re.search(r"\b(internet|connectivity|online|connected)\b", t) and re.search(
-            r"\b(check|is|am i|test|status)\b", t):
-        return [("check_internet", {})]
-
-    # ── LOGS & PACKAGES ────────────────────────────────────────────────
-
-    if re.search(r"\b(logs?|journal|syslog|dmesg)\b", t):
-        grep = ""
-        m = re.search(r"(?:grep|filter|search|find)\s+[\"']?(\w+)", t)
-        if m:
-            grep = m.group(1)
-        return [("view_system_logs", {"log_type": "system", "lines": 30, "grep": grep})]
-
-    if re.search(r"\b(install)\b", t) and re.search(r"\b(package|app|software)\b", t):
-        m = re.search(r"(?:install|package)\s+(\S+)", t)
-        if m:
-            return [("install_package", {"name": m.group(1)})]
-    if re.search(r"\b(uninstall|remove|delete)\b", t) and re.search(r"\b(package|app|software)\b", t):
-        m = re.search(r"(?:uninstall|remove|delete)\s+(\S+)", t)
-        if m:
-            return [("uninstall_package", {"name": m.group(1)})]
-
-    # ── NOTIFICATIONS & TTS ────────────────────────────────────────────
-
-    m = re.search(r"\b(?:show|send|display|popup|notify)\b.*?\b(?:toast|notification|alert|message|popup)\b.*?[\"'](.+?)[\"']", t)
-    if not m:
-        m = re.search(r"\b(?:toast|notification|alert)\b.*?[\"'](.+?)[\"']", t)
-    if not m:
-        m = re.search(r"(?:show|send|display|notify).*?(?:saying|with|text|message)\s+[\"'](.+?)[\"']", t)
-    if not m:
-        m = re.search(r"\b(?:show|send|display|popup|notify)\b.*?\b(?:toast|notification|alert|message)\b\s+(.+)", t)
-    if m:
-        return [("show_toast", {"message": m.group(1).strip()})]
-
-    m = re.search(r"\b(?:speak|say|tell me|read aloud|tts)\b.*?[\"'](.+?)[\"']", t)
-    if not m:
-        m = re.search(r"(?:speak|say|tell me|read aloud)\s+(.+)", t)
-    if m:
-        return [("text_to_speech", {"text": m.group(1).strip()})]
-
-    # ── CLIPBOARD ──────────────────────────────────────────────────────
-
-    m = re.search(r"\b(?:copy|clipboard|set clipboard)\b.*?[\"'](.+?)[\"']", t)
-    if not m:
-        m = re.search(r"\b(?:copy|clipboard|set clipboard)\b\s+(.+)", t)
-    if m:
-        return [("set_clipboard", {"text": m.group(1).strip()})]
-
-    # ── OPEN APP / SITE ────────────────────────────────────────────────
-
-    m = re.match(r"^(?:open|launch|start|run)\s+([\w .+-]+?)[.!?]?$", t)
+    # ═══════════════════════════════════════════════════════════════════
+    # OPEN APP / WEBSITE
+    # ═══════════════════════════════════════════════════════════════════
+    m = re.match(r"^(?:open|launch|start|run|boot)\s+(.+)$", t)
     if m:
         app_name = m.group(1).strip()
-        # Try universal app finder first
         cmd, source = find_command_for_app(app_name)
         if cmd:
             if source == "url_map":
@@ -339,8 +304,8 @@ def _fastpath(text):
                 return [("remote_terminal", {"command": cmd[0]})]
         return [("open_app", {"name": app_name})]
 
-    # "github" / "youtube" / "reddit" — just the name means open it
-    m = re.match(r"^([\w.-]+)[.!?]?$", t)
+    # Single word → try to open as app/site (e.g. "github", "firefox", "chrome")
+    m = re.match(r"^([\w.-]+)$", t)
     if m and len(m.group(1)) > 2:
         word = m.group(1).strip()
         cmd, source = find_command_for_app(word)
@@ -352,38 +317,67 @@ def _fastpath(text):
             else:
                 return [("open_app", {"name": word})]
 
-    # ── REMOTE TERMINAL ────────────────────────────────────────────────
-
-    # "ls", "ls -la", "ls /home"
-    m = re.match(r"^ls\b(.*)$", t)
-    if m:
-        cmd = "ls" + m.group(1)
-        return [("remote_terminal", {"command": cmd})]
-
-    # "run <command>" or "exec <command>" or "execute <command>"
+    # ═══════════════════════════════════════════════════════════════════
+    # SHELL COMMANDS
+    # ═══════════════════════════════════════════════════════════════════
+    # "run <command>" / "exec <command>" / "execute <command>"
     m = re.match(r"^(?:run|exec|execute|bash|sh|cmd)\s+(.+)$", t)
     if m:
         return [("remote_terminal", {"command": m.group(1).strip()})]
-
-    # "cat /path/to/file"
-    m = re.match(r"^cat\s+(.+)$", t)
-    if m:
-        return [("remote_terminal", {"command": f"cat {m.group(1)}"})]
-
     # Common shell commands
-    if re.match(r"^(?:pwd|whoami|date|uptime|df|df -h|du|du -h|free|free -h|top|htop|ps|ps aux|uname|uname -a|echo .+|mkdir .+|rm .+|cp .+|mv .+|chmod .+|chown .+|which .+|whereis .+|man .+|head .+|tail .+|wc .+|sort .+|grep .+|find .+|locate .+|tar .+|zip .+|unzip .+|curl .+|wget .+|ssh .+|scp .+|rsync .+|git .+|docker .+|podman .+|systemctl .+|journalctl .+|dmesg|lscpu|lsblk|lsusb|lspci|neofetch|screenfetch|cmatrix|sl|cowsay|fortune|figlet)$", t):
+    if re.match(r"^(ls|pwd|whoami|date|uptime|df|du|free|top|htop|ps|uname|neofetch|"
+                r"cat|head|tail|wc|sort|grep|find|mkdir|rm|cp|mv|chmod|chown|which|"
+                r"tar|zip|unzip|curl|wget|ssh|git|docker|systemctl|journalctl)\b", t):
+        return [("remote_terminal", {"command": t})]
+    # Programming tools
+    if re.match(r"^(python|python3|pip|node|npm|yarn|cargo|gcc|make|cmake)\s+", t):
         return [("remote_terminal", {"command": t})]
 
-    # "python <args>", "pip <args>", "node <args>", "npm <args>"
-    m = re.match(r"^(python|python3|pip|pip3|node|npm|yarn|cargo|go|rustc|gcc|g\+\+|make|cmake|meson|ninja)\s+(.+)$", t)
+    # ═══════════════════════════════════════════════════════════════════
+    # MULTI-PC
+    # ═══════════════════════════════════════════════════════════════════
+    m = re.match(r"^(?:switch|go)\s+to\s+(?:pc|computer|machine)?\s*(.+)$", t)
     if m:
-        return [("remote_terminal", {"command": t})]
-
-    # ── OPEN TERMINAL EMULATORS ────────────────────────────────────────
-
-    m = re.match(r"^open\s+(?:the\s+)?(terminal|kitty|alacritty|wezterm|terminology|tilix|konsole|gnome.?terminal|xfce4.?terminal|lxterminal|mate.?terminal|yakuake|dropdown)$", t)
+        return [("switch_to_pc", {"name": m.group(1).strip()})]
+    m = re.match(r"^(?:register|add)\s+(?:pc|computer|machine)\s+(\S+)\s+(\S+)$", t)
     if m:
-        terminal = m.group(1).strip()
-        return [("open_app", {"name": terminal})]
+        return [("register_remote_pc", {"name": m.group(1), "host": m.group(2)})]
+    if re.match(r"^(?:list|show)\s+(?:my\s+)?(?:pcs?|computers?|machines?)$", t):
+        return [("list_remote_pcs", {})]
+    m = re.match(r"^(?:ping|check)\s+(.+)$", t)
+    if m:
+        return [("ping_remote_pc", {"name": m.group(1).strip()})]
 
+    # ═══════════════════════════════════════════════════════════════════
+    # MACROS
+    # ═══════════════════════════════════════════════════════════════════
+    m = re.match(r"^(?:record|start recording)\s+(?:macro\s+)?(.+)$", t)
+    if m:
+        return [("start_macro_recording", {"name": m.group(1).strip()})]
+    if re.match(r"^(?:stop|end)\s+(?:recording|macro)$", t):
+        return [("stop_macro_recording", {})]
+    m = re.match(r"^(?:replay|play|run)\s+(?:macro\s+)?(.+)$", t)
+    if m:
+        return [("replay_macro", {"name": m.group(1).strip()})]
+    if re.match(r"^(?:list|show)\s+(?:my\s+)?macros?$", t):
+        return [("list_macros", {})]
+
+    # ═══════════════════════════════════════════════════════════════════
+    # GREETINGS / HELP
+    # ═══════════════════════════════════════════════════════════════════
+    if re.match(r"^(?:hello|hi|hey|howdy|sup|yo|greetings|good\s*(?:morning|afternoon|evening))$", t):
+        return "__reply__", "Hey! I'm Kibo — your PC assistant. Tell me what to do."
+    if re.match(r"^(?:help|what can you do|capabilities|commands|features)$", t):
+        tools = [
+            "volume/brightness control", "screenshot", "lock/shutdown/restart",
+            "open apps & websites", "file management", "process management",
+            "WiFi info", "battery status", "system stats", "notifications",
+            "text-to-speech", "clipboard", "shell commands", "multi-PC control",
+            "macro recording", "scheduled tasks", "alerts",
+        ]
+        return "__reply__", "I can help with:\n" + "\n".join(f"  - {t}" for t in tools)
+
+    # ═══════════════════════════════════════════════════════════════════
+    # FALLBACK — let the model try
+    # ═══════════════════════════════════════════════════════════════════
     return None

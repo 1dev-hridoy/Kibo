@@ -8,6 +8,7 @@ import hashlib
 import time
 
 AUTH_FILE = os.path.expanduser("~/.kibo_web_auth.json")
+DEFAULT_PASSWORD = "kibo"
 _token = None
 _token_expiry = None
 
@@ -38,7 +39,8 @@ def verify_password(password):
     """Verify a password against the stored hash."""
     config = _load_auth()
     if not config:
-        return True  # No password set = open access
+        # No custom password set, use default
+        return password == DEFAULT_PASSWORD
     hashed = hashlib.pbkdf2_hmac(
         "sha256", password.encode(), config["salt"].encode(), 100000
     ).hex()
@@ -63,8 +65,8 @@ def verify_token(token):
 
 
 def is_auth_required():
-    """Check if auth is required (password is set)."""
-    return os.path.exists(AUTH_FILE)
+    """Check if auth is required."""
+    return True 
 
 
 def remove_password():
