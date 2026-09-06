@@ -3,6 +3,7 @@ Deterministic fast-path routing for simple PC commands.
 """
 
 import re
+from .typo import correct_typos, find_command_for_app
 
 _last_topic = None
 
@@ -22,7 +23,9 @@ def _fastpath(text):
     always well-formatted.
     """
     global _last_topic
-    t = text.lower().strip()
+
+    # Fix typos first
+    t = correct_typos(text.lower().strip())
 
     # ── Model management commands ──────────────────────────────────────
     m = re.match(r"^(?:switch|change|use)\s+(?:to\s+)?(?:model\s+)?(\w+)[.!?]?$", t)
@@ -255,9 +258,30 @@ def _fastpath(text):
 
     # ── OPEN APP / SITE ────────────────────────────────────────────────
 
-    m = re.match(r"^(?:open|launch|start)\s+([\w .+-]+?)[.!?]?$", t)
+    m = re.match(r"^(?:open|launch|start|run)\s+([\w .+-]+?)[.!?]?$", t)
     if m:
-        return [("open_app", {"name": m.group(1).strip()})]
+        app_name = m.group(1).strip()
+        # Try universal app finder first
+        cmd, source = find_command_for_app(app_name)
+        if cmd:
+            if source == "url_map":
+                return [("open_app", {"name": app_name})]
+            elif source in ("which", "process"):
+                return [("remote_terminal", {"command": cmd[0]})]
+        return [("open_app", {"name": app_name})]
+
+    # "github" / "youtube" / "reddit" — just the name means open it
+    m = re.match(r"^([\w.-]+)[.!?]?$", t)
+    if m and len(m.group(1)) > 2:
+        word = m.group(1).strip()
+        cmd, source = find_command_for_app(word)
+        if cmd:
+            if source == "url_map":
+                return [("open_app", {"name": word})]
+            elif source in ("which", "process"):
+                return [("remote_terminal", {"command": cmd[0]})]
+            else:
+                return [("open_app", {"name": word})]
 
     # ── REMOTE TERMINAL ────────────────────────────────────────────────
 

@@ -6,6 +6,7 @@ from datetime import datetime
 from .engine import _engine_lock, _tools, _agent_loop, _extract, _detect_media, reload_backend
 from . import fastpath as _fp
 from .smalltalk import _smalltalk
+from .context import add_exchange, get_context_string, get_last_topic, get_current_task
 from agent.model_manager import (
     switch_model, get_models_display, get_active_model,
     resolve_model_name, is_model_available, MODELS
@@ -21,6 +22,7 @@ def ask(text: str) -> dict:
     with _engine_lock:
         chat_reply = _smalltalk(text)
         if chat_reply:
+            add_exchange(text, chat_reply)
             return {"text": chat_reply, "tool_calls": [], "results": [],
                     "media": None}
 
@@ -59,31 +61,40 @@ def ask(text: str) -> dict:
             success, msg = switch_model(model_name)
             if success:
                 reload_backend()
+            add_exchange(text, msg)
             return {"text": msg, "tool_calls": [], "results": [],
                     "media": None}
 
         if isinstance(spec, tuple) and spec[0] == "__models__":
-            return {"text": get_models_display(), "tool_calls": [],
+            reply = get_models_display()
+            add_exchange(text, reply)
+            return {"text": reply, "tool_calls": [],
                     "results": [], "media": None}
 
         if isinstance(spec, tuple) and spec[0] == "__current_model__":
             current = get_active_model()
             info = MODELS.get(current, {})
+            reply = (
+                f"Current model: {info.get('name', current)}\n"
+                f"Maker: {info.get('maker', 'Unknown')}\n"
+                f"Size: {info.get('size', 'Unknown')}\n"
+                f"Type 'models' to see all options."
+            )
+            add_exchange(text, reply)
             return {
-                "text": (
-                    f"Current model: {info.get('name', current)}\n"
-                    f"Maker: {info.get('maker', 'Unknown')}\n"
-                    f"Size: {info.get('size', 'Unknown')}\n"
-                    f"Type 'models' to see all options."
-                ),
+                "text": reply,
                 "tool_calls": [], "results": [], "media": None
             }
 
         if spec == "clock":
-            return {"text": datetime.now().strftime("It's %I:%M %p."),
+            reply = datetime.now().strftime("It's %I:%M %p.")
+            add_exchange(text, reply)
+            return {"text": reply,
                     "tool_calls": [], "results": [], "media": None}
         if spec == "date":
-            return {"text": datetime.now().strftime("Today is %A, %B %d, %Y."),
+            reply = datetime.now().strftime("Today is %A, %B %d, %Y.")
+            add_exchange(text, reply)
+            return {"text": reply,
                     "tool_calls": [], "results": [], "media": None}
         if spec is not None:
             executed, outs = [], []
@@ -99,7 +110,9 @@ def ask(text: str) -> dict:
                 elif e["name"] == "set_screen_brightness":
                     _fp._last_topic = "brightness"
             media = _detect_media(executed, outs)
-            return {"text": "\n".join(outs), "tool_calls": executed,
+            reply = "\n".join(outs)
+            add_exchange(text, reply, executed, outs)
+            return {"text": reply, "tool_calls": executed,
                     "results": outs, "media": media}
 
         response, executed, results = _agent_loop(text)
@@ -107,6 +120,7 @@ def ask(text: str) -> dict:
         media = _detect_media(
             [{"name": c.get("name"), "arguments": c.get("arguments") or {}}
              for c in calls] if calls else executed, results)
+        add_exchange(text, reply, executed, results)
         return {"text": reply,
                 "tool_calls": [{"name": c.get("name"),
                                 "arguments": c.get("arguments") or {}}
