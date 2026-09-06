@@ -202,29 +202,29 @@ install_helpers() {
         pacman)
             info "Installing via pacman..."
             sudo pacman -S --needed --noconfirm \
-                libnotify brightnessctl wl-clipboard xclip espeak-ng scrot 2>/dev/null \
-                && ok "Helpers installed (libnotify, brightnessctl, wl-clipboard, xclip, espeak-ng, scrot)" \
+                libnotify brightnessctl wl-clipboard xclip espeak-ng scrot xdotool wmctrl 2>/dev/null \
+                && ok "Helpers installed (libnotify, brightnessctl, wl-clipboard, xclip, espeak-ng, scrot, xdotool, wmctrl)" \
                 || warn "Some helpers failed (optional features may be limited)"
             ;;
         apt)
             info "Installing via apt..."
             sudo apt-get update -qq >/dev/null 2>&1 || true
             sudo apt-get install -y -qq \
-                libnotify-bin brightnessctl wl-clipboard xclip espeak-ng scrot 2>/dev/null \
-                && ok "Helpers installed (libnotify, brightnessctl, wl-clipboard, xclip, espeak-ng, scrot)" \
+                libnotify-bin brightnessctl wl-clipboard xclip espeak-ng scrot xdotool wmctrl 2>/dev/null \
+                && ok "Helpers installed" \
                 || warn "Some helpers failed (optional features may be limited)"
             ;;
         dnf)
             info "Installing via dnf..."
             sudo dnf install -y -q \
-                libnotify brightnessctl wl-clipboard xclip espeak-ng scrot 2>/dev/null \
+                libnotify brightnessctl wl-clipboard xclip espeak-ng scrot xdotool wmctrl 2>/dev/null \
                 && ok "Helpers installed" \
                 || warn "Some helpers failed (optional features may be limited)"
             ;;
         zypper)
             info "Installing via zypper..."
             sudo zypper --non-interactive install -q \
-                libnotify-tools brightnessctl wl-clipboard xclip espeak-ng scrot 2>/dev/null \
+                libnotify-tools brightnessctl wl-clipboard xclip espeak-ng scrot xdotool wmctrl 2>/dev/null \
                 && ok "Helpers installed" \
                 || warn "Some helpers failed (optional features may be limited)"
             ;;

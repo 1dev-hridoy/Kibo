@@ -31,16 +31,19 @@ from agent.tools.sysadmin import (
     install_package, uninstall_package,
 )
 from agent.tools.advanced import (
-    # Remote Terminal (2)
     remote_terminal, remote_terminal_background,
-    # Application Launcher (3)
     launch_app_smart, get_recent_apps, search_apps,
-    # Clipboard Sync (4)
     clipboard_sync_push, clipboard_sync_pull, clipboard_sync_list, clipboard_sync_clear,
-    # Media Streamer (4)
     play_media, stop_media, get_media_status, set_media_volume,
-    # Voice Gateway (4)
     voice_record_start, voice_record_stop, voice_speak, voice_list_devices,
+)
+from agent.runner.process_control import (
+    focus_app, minimize_app, maximize_app, close_app,
+    type_in_app, hotkey_in_app, list_windows, get_active_window,
+)
+from agent.tools.automation import (
+    check_system_alerts, get_alert_summary,
+    schedule_agent_task, schedule_shell_task,
 )
 
 ALL_TOOLS = [
@@ -70,15 +73,16 @@ ALL_TOOLS = [
     view_system_logs,
     # Package management (2)
     install_package, uninstall_package,
-    # ── Advanced Tools (17) ──
-    # Remote Terminal (2)
+    # Advanced (17)
     remote_terminal, remote_terminal_background,
-    # Application Launcher (3)
     launch_app_smart, get_recent_apps, search_apps,
-    # Clipboard Sync (4)
     clipboard_sync_push, clipboard_sync_pull, clipboard_sync_list, clipboard_sync_clear,
-    # Media Streamer (4)
     play_media, stop_media, get_media_status, set_media_volume,
-    # Voice Gateway (4)
     voice_record_start, voice_record_stop, voice_speak, voice_list_devices,
+    # Process Control (8)
+    focus_app, minimize_app, maximize_app, close_app,
+    type_in_app, hotkey_in_app, list_windows, get_active_window,
+    # Automation (4)
+    check_system_alerts, get_alert_summary,
+    schedule_agent_task, schedule_shell_task,
 ]

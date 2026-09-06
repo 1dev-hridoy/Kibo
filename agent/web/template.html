@@ -1,139 +1,390 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Kibo</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/water.css@2/out/water.css">
-  <style>
-    body { max-width: 880px; margin: 0 auto; }
-    header { display: flex; justify-content: space-between; align-items: baseline; }
-    header h1 { margin: 0; }
-    #msgs { min-height: 45vh; max-height: 55vh; overflow-y: auto;
-            display: flex; flex-direction: column; gap: 0.9rem;
-            padding: 1rem; margin: 1rem 0;
-            border: 1px solid var(--border); border-radius: 6px; }
-    .msg { max-width: 85%; }
-    .msg.user { align-self: flex-end; }
-    .msg.agent { align-self: flex-start; max-width: 95%; }
-    .msg .who { font-size: 0.7rem; opacity: 0.7; margin-bottom: 0.2rem; }
-    .msg .bubble { padding: 0.6rem 0.9rem; border-radius: 6px;
-                   border: 1px solid var(--border); background: var(--background-alt); }
-    .msg.user .bubble { background: var(--button-base); color: #fff; }
-    form.chat { display: flex; gap: 0.6rem; }
-    form.chat input { flex: 1; margin: 0; }
-    form.chat button { margin: 0; }
-    .qa { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-          gap: 0.5rem; }
-    .qa button { margin: 0; font-size: 0.78rem; padding: 0.45rem 0.6rem; text-align: left; }
-    details { margin-top: 0.4rem; font-size: 0.78rem; }
-    details pre { margin: 0.3rem 0 0; white-space: pre-wrap; }
-    footer { font-size: 0.75rem; opacity: 0.75; margin-top: 1rem; }
-  </style>
-</head>
-<body>
-  <header>
-    <h1>Kibo</h1>
-    <span>Online — local PC control (57 tools)</span>
-  </header>
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Kibo</title>
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/water.css@2/out/water.css" />
+        <style>
+            body {
+                max-width: 880px;
+                margin: 0 auto;
+            }
+            header {
+                display: flex;
+                justify-content: space-between;
+                align-items: baseline;
+            }
+            header h1 {
+                margin: 0;
+            }
+            #msgs {
+                min-height: 45vh;
+                max-height: 55vh;
+                overflow-y: auto;
+                display: flex;
+                flex-direction: column;
+                gap: 0.9rem;
+                padding: 1rem;
+                margin: 1rem 0;
+                border: 1px solid var(--border);
+                border-radius: 6px;
+            }
+            .msg {
+                max-width: 85%;
+            }
+            .msg.user {
+                align-self: flex-end;
+            }
+            .msg.agent {
+                align-self: flex-start;
+                max-width: 95%;
+            }
+            .msg .who {
+                font-size: 0.7rem;
+                opacity: 0.7;
+                margin-bottom: 0.2rem;
+            }
+            .msg .bubble {
+                padding: 0.6rem 0.9rem;
+                border-radius: 6px;
+                border: 1px solid var(--border);
+                background: var(--background-alt);
+            }
+            .msg.user .bubble {
+                background: var(--button-base);
+                color: #fff;
+            }
+            form.chat {
+                display: flex;
+                gap: 0.6rem;
+            }
+            form.chat input {
+                flex: 1;
+                margin: 0;
+            }
+            form.chat button {
+                margin: 0;
+            }
+            .qa {
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+                gap: 0.5rem;
+            }
+            .qa button {
+                margin: 0;
+                font-size: 0.78rem;
+                padding: 0.45rem 0.6rem;
+                text-align: left;
+            }
+            details {
+                margin-top: 0.4rem;
+                font-size: 0.78rem;
+            }
+            details pre {
+                margin: 0.3rem 0 0;
+                white-space: pre-wrap;
+            }
+            footer {
+                font-size: 0.75rem;
+                opacity: 0.75;
+                margin-top: 1rem;
+            }
+            .model-badge {
+                display: inline-block;
+                padding: 0.2rem 0.5rem;
+                border-radius: 4px;
+                background: var(--button-base);
+                color: #fff;
+                font-size: 0.7rem;
+                cursor: pointer;
+                margin-left: 0.5rem;
+            }
+            .model-badge:hover {
+                opacity: 0.8;
+            }
+            .toolbar {
+                display: flex;
+                gap: 0.5rem;
+                align-items: center;
+                margin-bottom: 0.5rem;
+            }
+            .toolbar button {
+                font-size: 0.75rem;
+                padding: 0.3rem 0.6rem;
+                margin: 0;
+            }
+        </style>
+    </head>
+    <body>
+        <header>
+            <h1>Kibo</h1>
+            <span
+                >Online — <span id="model-name">Loading...</span>
+                <span class="model-badge" onclick="showModelPicker()">Switch Model</span></span
+            >
+        </header>
 
-  <div id="msgs">
-    <div class="msg agent">
-      <div class="who">Kibo</div>
-      <div class="bubble">Ready. Tell me what to do on this PC — I understand natural language.</div>
-    </div>
-  </div>
+        <div class="toolbar">
+            <button onclick="clearChat()">Clear Chat</button>
+            <button onclick="loadHistory()">Load History</button>
+            <button onclick="document.getElementById('screen-dialog').showModal()">Live Screen</button>
+        </div>
 
-  <form class="chat" id="chat">
-    <input id="input" placeholder="e.g. set volume to 80, take screenshot, list processes..." autocomplete="off">
-    <button type="submit">Send</button>
-  </form>
+        <div id="msgs">
+            <div class="msg agent">
+                <div class="who">Kibo</div>
+                <div class="bubble">Ready. Tell me what to do on this PC — I understand natural language.</div>
+            </div>
+        </div>
 
-  <h3>Quick actions</h3>
-  <div class="qa">
-    <button onclick="sendCmd('Check battery status')">Battery</button>
-    <button onclick="sendCmd('Get volume levels')">Volume level</button>
-    <button onclick="sendCmd('Make the sound 100%')">Volume 100%</button>
-    <button onclick="sendCmd('Set brightness to 80')">Brightness 80%</button>
-    <button onclick="sendCmd('Take a screenshot')">Screenshot</button>
-    <button onclick="sendCmd('Lock the screen')">Lock screen</button>
-    <button onclick="sendCmd('WiFi info')">WiFi info</button>
-    <button onclick="sendCmd('Scan WiFi networks')">WiFi scan</button>
-    <button onclick="sendCmd('Show device info')">PC info</button>
-    <button onclick="sendCmd('System info')">System info</button>
-    <button onclick="sendCmd('Show CPU and RAM usage')">CPU / RAM</button>
-    <button onclick="sendCmd('Take a photo')">Webcam photo</button>
-    <button onclick="sendCmd('Copy hello to clipboard')">Clipboard set</button>
-    <button onclick="sendCmd('Open YouTube')">YouTube</button>
-    <button onclick="sendCmd('Download https://example.com')">Download</button>
-    <button onclick="sendCmd('Show a notification saying done')">Notify</button>
-    <button onclick="sendCmd('What time is it')">Time</button>
-    <button onclick="sendCmd('List files in home directory')">Files</button>
-    <button onclick="sendCmd('List installed apps')">Installed apps</button>
-    <button onclick="sendCmd('Show running processes')">Processes</button>
-    <button onclick="sendCmd('Show disk usage')">Disk usage</button>
-    <button onclick="sendCmd('Show system temperature')">Temperature</button>
-    <button onclick="sendCmd('View system logs')">System logs</button>
-    <button onclick="sendCmd('Read file /etc/hostname')">Read file</button>
-    <button onclick="sendCmd('What tools do you have')">All tools</button>
-  </div>
+        <form class="chat" id="chat">
+            <input
+                id="input"
+                placeholder="e.g. set volume to 80, take screenshot, list processes..."
+                autocomplete="off"
+            />
+            <button type="submit">Send</button>
+        </form>
 
-  <footer>Themed by <a href="https://watercss.kognise.dev/">water.css</a> &middot; Needle local engine &middot; nothing leaves this device</footer>
+        <h3>Quick actions</h3>
+        <div class="qa">
+            <button onclick="sendCmd('Check battery status')">Battery</button>
+            <button onclick="sendCmd('Get volume levels')">Volume level</button>
+            <button onclick="sendCmd('Make the sound 100%')">Volume 100%</button>
+            <button onclick="sendCmd('Set brightness to 80')">Brightness 80%</button>
+            <button onclick="sendCmd('Take a screenshot')">Screenshot</button>
+            <button onclick="sendCmd('Lock the screen')">Lock screen</button>
+            <button onclick="sendCmd('WiFi info')">WiFi info</button>
+            <button onclick="sendCmd('Scan WiFi networks')">WiFi scan</button>
+            <button onclick="sendCmd('Show device info')">PC info</button>
+            <button onclick="sendCmd('System info')">System info</button>
+            <button onclick="sendCmd('Show CPU and RAM usage')">CPU / RAM</button>
+            <button onclick="sendCmd('Take a photo')">Webcam photo</button>
+            <button onclick="sendCmd('Copy hello to clipboard')">Clipboard set</button>
+            <button onclick="sendCmd('Open YouTube')">YouTube</button>
+            <button onclick="sendCmd('Download https://example.com')">Download</button>
+            <button onclick="sendCmd('Show a notification saying done')">Notify</button>
+            <button onclick="sendCmd('What time is it')">Time</button>
+            <button onclick="sendCmd('List files in home directory')">Files</button>
+            <button onclick="sendCmd('List installed apps')">Installed apps</button>
+            <button onclick="sendCmd('Show running processes')">Processes</button>
+            <button onclick="sendCmd('Show disk usage')">Disk usage</button>
+            <button onclick="sendCmd('Show system temperature')">Temperature</button>
+            <button onclick="sendCmd('View system logs')">System logs</button>
+            <button onclick="sendCmd('Read file /etc/hostname')">Read file</button>
+            <button onclick="sendCmd('What tools do you have')">All tools</button>
+        </div>
 
-  <script>
-    const msgs = document.getElementById('msgs');
-    const input = document.getElementById('input');
+        <footer>
+            Themed by <a href="https://watercss.kognise.dev/">water.css</a> &middot; Local AI &middot; nothing leaves
+            this device
+        </footer>
 
-    function esc(s) {
-      const d = document.createElement('div');
-      d.textContent = s == null ? '' : String(s);
-      return d.innerHTML;
-    }
+        <!-- Model Picker Modal -->
+        <dialog id="model-dialog">
+            <h3>Switch Model</h3>
+            <div id="model-list"></div>
+            <br />
+            <button onclick="document.getElementById('model-dialog').close()">Cancel</button>
+        </dialog>
 
-    function addMsg(who, cls, html) {
-      const d = document.createElement('div');
-      d.className = 'msg ' + cls;
-      d.innerHTML = '<div class="who">' + who + ' &middot; ' +
-        new Date().toLocaleTimeString() + '</div><div class="bubble">' +
-        html + '</div>';
-      msgs.appendChild(d);
-      msgs.scrollTop = msgs.scrollHeight;
-    }
+        <!-- Live Screen Modal -->
+        <dialog id="screen-dialog">
+            <h3>Live Screen</h3>
+            <div style="text-align: center">
+                <img
+                    id="live-screen"
+                    src="/api/screenshot"
+                    style="max-width: 100%; border-radius: 6px; cursor: pointer"
+                    onclick="refreshScreen()"
+                    title="Click to refresh"
+                />
+                <br /><br />
+                <button onclick="toggleLiveView()" id="live-btn">Start Live View</button>
+                <button onclick="refreshScreen()">Refresh</button>
+                <button onclick="document.getElementById('screen-dialog').close()">Close</button>
+            </div>
+        </dialog>
 
-    function sendCmd(text) {
-      input.value = text;
-      document.getElementById('chat').requestSubmit();
-    }
+        <script>
+            const msgs = document.getElementById("msgs");
+            const input = document.getElementById("input");
+            const HISTORY_KEY = "kibo_chat_history";
 
-    document.getElementById('chat').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const text = input.value.trim();
-      if (!text) return;
-      addMsg('You', 'user', esc(text));
-      input.value = '';
-      try {
-        const res = await fetch('/api/chat', {
-          method: 'POST',
-          headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({message: text})
-        });
-        const data = await res.json();
-        if (data.error) { addMsg('Kibo', 'agent', 'Error: ' + esc(data.error)); return; }
-        let html = esc(data.response || '...');
-        if (data.media && data.media.url) {
-          html += '<br><img src="' + esc(data.media.url) + '" alt="' +
-                  esc(data.media.type) + '" style="max-width:100%;border-radius:6px;margin-top:0.5rem;cursor:pointer" onclick="window.open(this.src)">';
-        }
-        if (data.tools && data.tools.length) {
-          html += '<details><summary>' + data.tools.length + ' tool call' +
-                  (data.tools.length > 1 ? 's' : '') + '</summary><pre><code>' +
-                  esc(data.tools.join('\n')) + '</code></pre></details>';
-        }
-        addMsg('Kibo', 'agent', html);
-      } catch (err) {
-        addMsg('Kibo', 'agent', 'Error: ' + esc(err.message));
-      }
-    });
-  </script>
-</body>
+            async function loadModel() {
+                try {
+                    const res = await fetch("/api/model");
+                    const data = await res.json();
+                    document.getElementById("model-name").textContent = data.name + " (" + data.size + ")";
+                } catch (e) {}
+            }
+
+            async function showModelPicker() {
+                const dialog = document.getElementById("model-dialog");
+                const list = document.getElementById("model-list");
+                list.innerHTML = "Loading...";
+                dialog.showModal();
+
+                try {
+                    const res = await fetch("/api/models");
+                    const data = await res.json();
+                    list.innerHTML = "";
+                    data.models.forEach(m => {
+                        const btn = document.createElement("button");
+                        btn.style.display = "block";
+                        btn.style.width = "100%";
+                        btn.style.margin = "0.3rem 0";
+                        btn.style.textAlign = "left";
+                        btn.innerHTML =
+                            (m.active ? "● " : "○ ") +
+                            m.name +
+                            " (" +
+                            m.size +
+                            ")" +
+                            (m.available ? "" : " [Not downloaded]");
+                        btn.disabled = !m.available || m.active;
+                        btn.onclick = async () => {
+                            await fetch("/api/model", {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ model: m.key }),
+                            });
+                            dialog.close();
+                            loadModel();
+                            addMsg("Kibo", "agent", "Switched to " + m.name);
+                        };
+                        list.appendChild(btn);
+                    });
+                } catch (e) {
+                    list.innerHTML = "Error loading models";
+                }
+            }
+
+            function saveHistory() {
+                const messages = [];
+                msgs.querySelectorAll(".msg").forEach(el => {
+                    const who = el.querySelector(".who")?.textContent || "";
+                    const bubble = el.querySelector(".bubble")?.textContent || "";
+                    messages.push({ who, bubble, cls: el.className });
+                });
+                localStorage.setItem(HISTORY_KEY, JSON.stringify(messages));
+            }
+
+            function loadHistory() {
+                const saved = localStorage.getItem(HISTORY_KEY);
+                if (!saved) return;
+                try {
+                    const messages = JSON.parse(saved);
+                    msgs.innerHTML = "";
+                    messages.forEach(m => {
+                        const d = document.createElement("div");
+                        d.className = m.cls;
+                        d.innerHTML =
+                            '<div class="who">' + esc(m.who) + '</div><div class="bubble">' + esc(m.bubble) + "</div>";
+                        msgs.appendChild(d);
+                    });
+                    msgs.scrollTop = msgs.scrollHeight;
+                } catch (e) {}
+            }
+
+            function clearChat() {
+                msgs.innerHTML = "";
+                localStorage.removeItem(HISTORY_KEY);
+                addMsg("Kibo", "agent", "Chat cleared. Ready for new commands.");
+            }
+
+            function esc(s) {
+                const d = document.createElement("div");
+                d.textContent = s == null ? "" : String(s);
+                return d.innerHTML;
+            }
+
+            function addMsg(who, cls, html) {
+                const d = document.createElement("div");
+                d.className = "msg " + cls;
+                d.innerHTML =
+                    '<div class="who">' +
+                    who +
+                    " &middot; " +
+                    new Date().toLocaleTimeString() +
+                    '</div><div class="bubble">' +
+                    html +
+                    "</div>";
+                msgs.appendChild(d);
+                msgs.scrollTop = msgs.scrollHeight;
+                saveHistory();
+            }
+
+            function sendCmd(text) {
+                input.value = text;
+                document.getElementById("chat").requestSubmit();
+            }
+
+            document.getElementById("chat").addEventListener("submit", async e => {
+                e.preventDefault();
+                const text = input.value.trim();
+                if (!text) return;
+                addMsg("You", "user", esc(text));
+                input.value = "";
+                try {
+                    const res = await fetch("/api/chat", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ message: text }),
+                    });
+                    const data = await res.json();
+                    if (data.error) {
+                        addMsg("Kibo", "agent", "Error: " + esc(data.error));
+                        return;
+                    }
+                    let html = esc(data.response || "...");
+                    if (data.media && data.media.url) {
+                        html +=
+                            '<br><img src="' +
+                            esc(data.media.url) +
+                            '" alt="' +
+                            esc(data.media.type) +
+                            '" style="max-width:100%;border-radius:6px;margin-top:0.5rem;cursor:pointer" onclick="window.open(this.src)">';
+                    }
+                    if (data.tools && data.tools.length) {
+                        html +=
+                            "<details><summary>" +
+                            data.tools.length +
+                            " tool call" +
+                            (data.tools.length > 1 ? "s" : "") +
+                            "</summary><pre><code>" +
+                            esc(data.tools.join("\n")) +
+                            "</code></pre></details>";
+                    }
+                    addMsg("Kibo", "agent", html);
+                } catch (err) {
+                    addMsg("Kibo", "agent", "Error: " + esc(err.message));
+                }
+            });
+
+            loadModel();
+            loadHistory();
+
+            let liveInterval = null;
+
+            function refreshScreen() {
+                const img = document.getElementById("live-screen");
+                img.src = "/api/screenshot?t=" + Date.now();
+            }
+
+            function toggleLiveView() {
+                const btn = document.getElementById("live-btn");
+                if (liveInterval) {
+                    clearInterval(liveInterval);
+                    liveInterval = null;
+                    btn.textContent = "Start Live View";
+                } else {
+                    liveInterval = setInterval(refreshScreen, 2000);
+                    btn.textContent = "Stop Live View";
+                    refreshScreen();
+                }
+            }
+        </script>
+    </body>
 </html>

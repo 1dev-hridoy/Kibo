@@ -197,6 +197,26 @@ def get_models_display():
     lines.append("    needle / n    > Switch to Needle 2")
     lines.append("    gemma / fg    > Switch to FunctionGemma")
     lines.append("    models        > Show this list")
+    return "\n".join(lines)
+
+
+def get_models_list():
+    """Get a list of all models with their info."""
+    active = get_active_model()
+    models = []
+    for key, info in MODELS.items():
+        models.append({
+            "key": key,
+            "name": info["name"],
+            "maker": info["maker"],
+            "params": info["params"],
+            "size": info["size"],
+            "ram": info["ram"],
+            "speed": info["speed"],
+            "available": is_model_available(key),
+            "active": key == active,
+        })
+    return models
     lines.append("=" * 50)
     return "\n".join(lines)
 

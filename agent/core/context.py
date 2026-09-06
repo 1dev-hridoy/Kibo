@@ -36,16 +36,14 @@ def add_exchange(user_text, agent_text, tool_calls=None, results=None):
     _history.append(exchange)
 
 
-  
     if tool_calls:
-        for tc in tool_calls:
+        for i, tc in enumerate(tool_calls):
+            result_str = str(results[i])[:100] if results and i < len(results) else ""
             _tool_history.append({
                 "name": tc.get("name", ""),
                 "args": tc.get("arguments", {}),
-                "result": str(results[_tool_history.__len__()])[:100] if results else "",
+                "result": result_str,
             })
-
-
 
     _detect_current_task(user_text)
 

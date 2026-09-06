@@ -27,7 +27,76 @@ def _fastpath(text):
     # Fix typos first
     t = correct_typos(text.lower().strip())
 
-    # ── Model management commands ──────────────────────────────────────
+  
+    if re.match(r"^(?:live|watch|view|show)\s*(?:screen|display|monitor)[.!?]?$", t):
+        return [("take_screenshot_now", {})]
+
+
+    m = re.match(r"^(?:focus|bring|activate)\s+(?:the\s+)?(.+?)[.!?]?$", t)
+    if m:
+        return [("focus_app", {"name": m.group(1).strip()})]
+
+    m = re.match(r"^(?:minimize|min)\s+(?:the\s+)?(.+?)[.!?]?$", t)
+    if m:
+        return [("minimize_app", {"name": m.group(1).strip()})]
+
+    m = re.match(r"^(?:maximize|max)\s+(?:the\s+)?(.+?)[.!?]?$", t)
+    if m:
+        return [("maximize_app", {"name": m.group(1).strip()})]
+
+    m = re.match(r"^(?:close|quit|exit)\s+(?:the\s+)?(.+?)[.!?]?$", t)
+    if m:
+        return [("close_app", {"name": m.group(1).strip()})]
+
+    m = re.match(r"^(?:type|write|input)\s+(?:in|into)\s+(.+?)\s*:\s*(.+)[.!?]?$", t)
+    if m:
+        return [("type_in_app", {"name": m.group(1).strip(), "text": m.group(2).strip()})]
+
+    m = re.match(r"^(?:hotkey|shortcut|press)\s+(?:in|on)\s+(.+?)\s*:\s*(.+)[.!?]?$", t)
+    if m:
+        return [("hotkey_in_app", {"name": m.group(1).strip(), "keys": m.group(2).strip()})]
+
+    if re.match(r"^(?:list|show)\s+(?:open\s+)?windows?[.!?]?$", t):
+        return [("list_windows", {})]
+
+
+    m = re.match(r"^(?:alert|notify|warn)\s+(?:me\s+)?(?:when|if)\s+(.+?)\s+(?:goes?\s+)?(?:above|over|higher|more)\s+(\d+)[.!?]?$", t)
+    if m:
+        return [("add_alert", {"metric": m.group(1), "threshold": int(m.group(2)), "direction": "above"})]
+
+    m = re.match(r"^(?:alert|notify|warn)\s+(?:me\s+)?(?:when|if)\s+(.+?)\s+(?:goes?\s+)?(?:below|under|less|lower)\s+(\d+)[.!?]?$", t)
+    if m:
+        return [("add_alert", {"metric": m.group(1), "threshold": int(m.group(2)), "direction": "below"})]
+
+    if re.match(r"^(?:list|show|check)\s+(?:my\s+)?(?:alerts?|notifications?|warnings?)[.!?]?$", t):
+        return [("get_alert_summary", {})]
+
+    if re.match(r"^(?:check|scan)\s+(?:for\s+)?(?:alerts?|thresholds?|warnings?)[.!?]?$", t):
+        return [("check_system_alerts", {})]
+
+
+    m = re.match(r"^(?:schedule|remind|remind me to|set a timer)\s+(?:to\s+)?(.+?)(?:\s+(?:in|after|every)\s+(\d+)\s*(?:s|sec|second|m|min|minute|h|hr|hour)s?)?[.!?]?$", t)
+    if m:
+        cmd = m.group(1).strip()
+        delay = 0
+        repeat = 0
+        if m.group(2):
+            num = int(m.group(2))
+            if "h" in t:
+                delay = num * 3600
+            elif "m" in t:
+                delay = num * 60
+            else:
+                delay = num
+            if "every" in t:
+                repeat = delay
+                delay = 0
+        return [("schedule_agent_task", {"instruction": cmd, "delay": delay, "repeat": repeat})]
+
+    if re.match(r"^(?:list|show)\s+(?:my\s+)?(?:tasks?|jobs?|schedule|scheduled)[.!?]?$", t):
+        return [("list_tasks", {})]
+
+
     m = re.match(r"^(?:switch|change|use)\s+(?:to\s+)?(?:model\s+)?(\w+)[.!?]?$", t)
     if m:
         return "__switch_model__", m.group(1).lower()
