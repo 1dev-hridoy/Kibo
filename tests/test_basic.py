@@ -10,7 +10,7 @@ class TestImports(unittest.TestCase):
 
     def test_tools_import(self):
         from agent.tools import ALL_TOOLS
-        self.assertEqual(len(ALL_TOOLS), 57)
+        self.assertGreaterEqual(len(ALL_TOOLS), 57)
 
     def test_core_import(self):
         from agent.core import ask

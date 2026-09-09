@@ -9,6 +9,9 @@ from agent.runner.common import (
     run_cmd,
     run_cmd_json,
     powershell,
+    StatefulShell,
+    get_persistent_shell,
+    run_persistent,
 )
 
 # notifications
@@ -84,6 +87,9 @@ from agent.runner.logs_viewer import view_logs
 # packages
 from agent.runner.packages import package_install, package_uninstall
 
+# web
+from agent.runner.web import web_search_and_extract, fetch_url_text
+
 __all__ = [
     # common
     "CREATE_NO_WINDOW",
@@ -93,6 +99,9 @@ __all__ = [
     "run_cmd",
     "run_cmd_json",
     "powershell",
+    "StatefulShell",
+    "get_persistent_shell",
+    "run_persistent",
     # notifications
     "notify",
     "toast",
@@ -152,4 +161,7 @@ __all__ = [
     # packages
     "package_install",
     "package_uninstall",
+    # web
+    "web_search_and_extract",
+    "fetch_url_text",
 ]

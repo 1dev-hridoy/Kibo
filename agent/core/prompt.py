@@ -4,6 +4,10 @@ System prompt and text-cleaning utilities for the Needle agent.
 
 import re
 
+
+
+from .memory import get_memory_context
+
 SYSTEM = """You are Kibo, a helpful PC assistant. You control this computer through tools.
 
 When the user asks you to DO something on the PC, call the right tool:
@@ -26,20 +30,40 @@ Examples of things you CAN do:
 - "install vlc" → install_package(name="vlc")
 - "create file test.txt" → create_file(path="test.txt", content="")
 - "show temperature" → get_temperature()
+- "search the web for python docs" → web_search(query="python docs")
+- "fetch https://example.com" → fetch_url(url="https://example.com")
 
 Tool mapping (use these exact names):
 System: set_volume, get_volume_info, set_screen_brightness, get_battery_status,
   lock_screen_now, power_control, show_toast, show_notification, get_system_stats
 Files: list_files, create_file, delete_file, move_file, read_file
 Apps: open_app, open_local_path, list_installed_apps
-Terminal: remote_terminal (run any shell command)
-Network: get_wifi_info, scan_wifi_networks, check_internet, download_file
+Terminal: remote_terminal (run any shell command — persistent session, cd carries over)
+Network: get_wifi_info, scan_wifi_networks, check_internet, download_file, web_search, fetch_url
 Process: get_running_processes, kill_a_process
 Media: text_to_speech, take_screenshot_now, take_camera_photo
 Package: install_package, uninstall_package
 Info: get_device_info, get_system_info, get_disk_usage, get_temperature, view_system_logs
+System Health: check_system_health
 
 Always call the tool that best matches what the user wants. Never say you cannot help."""
+
+
+def _build_system_prompt() -> str:
+    """Build the full system prompt with memory context injected."""
+    memory_ctx = get_memory_context()
+    base = SYSTEM
+    if memory_ctx:
+        base += f"\n\n---\n### Persistent Memory\n{memory_ctx}"
+    return base
+
+
+_GIBBERISH = re.compile(
+    r"available tools|list of tools|tools are( \w+)+/|"
+    r"no (?:argument|param)|arguments? (?:needed|required)|"
+    r"-> no tool|-> (?:show|message|call|use)|"
+    r"(?:'|\")?\w+(?:'|\")? -> (?:no|message|show|call)|"
+    r"^\W*$", re.I)
 
 _GIBBERISH = re.compile(
     r"available tools|list of tools|tools are( \w+)+/|"

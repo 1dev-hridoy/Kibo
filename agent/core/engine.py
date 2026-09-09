@@ -11,6 +11,7 @@ import threading
 from agent.tools import ALL_TOOLS
 from agent.model_manager import create_backend, get_active_model, MODELS
 from .prompt import _strip_meta, _fallback
+from .sandbox import check_command_safety, SandboxError
 
 
 def _init_backend():
@@ -57,8 +58,21 @@ def _agent_loop(text, max_steps=4):
             if fn is None:
                 results.append(f"Error: unknown tool '{name}'")
                 continue
+
+
+        
+            if name in ("remote_terminal", "remote_terminal_background"):
+                cmd = args.get("command", "")
+                danger = check_command_safety(cmd)
+                if danger:
+                    results.append(danger)
+                    continue
+
+                
             try:
                 results.append(str(fn(**args)))
+            except SandboxError as exc:
+                results.append(f"Sandbox: {exc}")
             except Exception as exc:
                 results.append(f"Error: {exc}")
         _backend.reset()

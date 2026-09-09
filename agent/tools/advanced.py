@@ -18,7 +18,7 @@ from agent.config import (
     IS_WINDOWS, IS_MACOS, IS_LINUX, HOME, DOWNLOAD_DIR,
     CMD_TIMEOUT, PLATFORM_NAME,
 )
-from agent.runner.common import run, powershell, CREATE_NO_WINDOW
+from agent.runner.common import run, powershell, CREATE_NO_WINDOW, run_persistent
 
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -29,6 +29,8 @@ from agent.runner.common import run, powershell, CREATE_NO_WINDOW
 def remote_terminal(command: str, timeout: int = 30) -> str:
     """
     Execute a shell command on this PC and return the output.
+    Uses a persistent shell session — directory changes (cd) and
+    environment variables carry over between calls.
     Supports any shell command: ls, cat, grep, df, apt, git, python, etc.
     Use for: running scripts, checking system state, installing packages,
     browsing files, git operations, or any shell task.
@@ -42,38 +44,13 @@ def remote_terminal(command: str, timeout: int = 30) -> str:
     timeout = min(max(int(timeout), 1), 300)
 
     try:
-        if IS_WINDOWS:
-            argv = ["powershell", "-NoProfile", "-NonInteractive",
-                    "-Command", command]
-            res = subprocess.run(
-                argv, capture_output=True, text=True, errors="replace",
-                timeout=timeout, creationflags=CREATE_NO_WINDOW)
-        else:
-            argv = ["bash", "-c", command]
-            res = subprocess.run(
-                argv, capture_output=True, text=True, errors="replace",
-                timeout=timeout)
-
-        stdout = res.stdout.strip() if res.stdout else ""
-        stderr = res.stderr.strip() if res.stderr else ""
-
-        parts = []
-        if stdout:
-            parts.append(stdout)
-        if stderr:
-            parts.append(f"[stderr]\n{stderr}")
-        if res.returncode != 0:
-            parts.append(f"[exit code: {res.returncode}]")
-
-        output = "\n".join(parts) if parts else "Command executed (no output)."
+        output = run_persistent(command, timeout)
 
         if len(output) > 4000:
             output = output[:2000] + "\n... [truncated] ...\n" + output[-2000:]
 
         return output
 
-    except subprocess.TimeoutExpired:
-        return f"Error: Command timed out after {timeout}s."
     except Exception as e:
         return f"Error: {e}"
 

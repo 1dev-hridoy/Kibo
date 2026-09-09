@@ -20,7 +20,7 @@ from agent.tools.media import (
 )
 from agent.tools.network import (
     get_wifi_info, scan_wifi_networks, download_file, get_system_info,
-    check_internet,
+    check_internet, web_search, fetch_url,
 )
 from agent.tools.apps import open_app, open_local_path, list_files, list_installed_apps
 from agent.tools.sysadmin import (
@@ -29,6 +29,7 @@ from agent.tools.sysadmin import (
     get_disk_usage, get_temperature,
     view_system_logs,
     install_package, uninstall_package,
+    check_system_health,
 )
 from agent.tools.advanced import (
     remote_terminal, remote_terminal_background,
@@ -66,9 +67,9 @@ ALL_TOOLS = [
     # Media (4)
     take_camera_photo, text_to_speech,
     record_audio_start, record_audio_stop,
-    # Network (5)
+    # Network (7)
     get_wifi_info, scan_wifi_networks, check_internet,
-    download_file, get_system_info,
+    download_file, get_system_info, web_search, fetch_url,
     # Apps & Files (4)
     open_app, open_local_path, list_files, list_installed_apps,
     # Process management (2)
@@ -81,6 +82,8 @@ ALL_TOOLS = [
     view_system_logs,
     # Package management (2)
     install_package, uninstall_package,
+    # System Health (1)
+    check_system_health,
     # Advanced (17)
     remote_terminal, remote_terminal_background,
     launch_app_smart, get_recent_apps, search_apps,
