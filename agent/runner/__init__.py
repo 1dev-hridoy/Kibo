@@ -90,6 +90,29 @@ from agent.runner.packages import package_install, package_uninstall
 # web
 from agent.runner.web import web_search_and_extract, fetch_url_text
 
+# network scan
+from agent.runner.network_scan import (
+    local_network_scan,
+    subnet_port_sweep,
+    local_port_scan,
+    list_local_listeners,
+)
+
+# security audit
+from agent.runner.security_audit import (
+    detect_arp_spoofing,
+    audit_vpn_connection,
+    audit_website_security,
+)
+
+# dns intel
+from agent.runner.dns_intel import (
+    dns_lookup,
+    whois_lookup,
+    ip_geolocation_lookup,
+    check_subdomain_takeover,
+)
+
 __all__ = [
     # common
     "CREATE_NO_WINDOW",
@@ -164,4 +187,18 @@ __all__ = [
     # web
     "web_search_and_extract",
     "fetch_url_text",
+    # network scan
+    "local_network_scan",
+    "subnet_port_sweep",
+    "local_port_scan",
+    "list_local_listeners",
+    # security audit
+    "detect_arp_spoofing",
+    "audit_vpn_connection",
+    "audit_website_security",
+    # dns intel
+    "dns_lookup",
+    "whois_lookup",
+    "ip_geolocation_lookup",
+    "check_subdomain_takeover",
 ]

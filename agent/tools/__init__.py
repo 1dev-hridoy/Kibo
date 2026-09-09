@@ -54,6 +54,12 @@ from agent.tools.multi_pc import (
     register_remote_pc, unregister_remote_pc, list_remote_pcs,
     switch_to_pc, get_current_pc, ping_remote_pc, execute_on_remote_pc,
 )
+from agent.tools.security import (
+    local_network_scan, subnet_port_sweep, local_port_scan,
+    list_local_listeners, detect_arp_spoofing, audit_vpn_connection,
+    audit_website_security, dns_lookup, whois_lookup,
+    ip_geolocation_lookup, check_subdomain_takeover,
+)
 
 ALL_TOOLS = [
     # System (10)
@@ -103,4 +109,10 @@ ALL_TOOLS = [
   
     register_remote_pc, unregister_remote_pc, list_remote_pcs,
     switch_to_pc, get_current_pc, ping_remote_pc, execute_on_remote_pc,
+
+    # network security
+    local_network_scan, subnet_port_sweep, local_port_scan,
+    list_local_listeners, detect_arp_spoofing, audit_vpn_connection,
+    audit_website_security, dns_lookup, whois_lookup,
+    ip_geolocation_lookup, check_subdomain_takeover,
 ]
