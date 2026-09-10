@@ -1,16 +1,9 @@
 """
-Network security tools — scanning, auditing, DNS/WHOIS lookups,
-IP geolocation, and subdomain takeover checks.
+Security audit tool wrappers — ARP, VPN, website, DNS, WHOIS, geolocation, subdomain.
 """
 
 import needle
 
-from agent.runner.network_scan import (
-    local_network_scan as _network_scan,
-    subnet_port_sweep as _port_sweep,
-    local_port_scan as _port_scan,
-    list_local_listeners as _listeners,
-)
 from agent.runner.security_audit import (
     detect_arp_spoofing as _arp_check,
     audit_vpn_connection as _vpn_audit,
@@ -23,100 +16,6 @@ from agent.runner.dns_intel import (
     check_subdomain_takeover as _subdomain_check,
 )
 
-
-
-@needle.tool
-def local_network_scan() -> str:
-    """Discover all active devices on your local network subnet.
-    Uses parallel ICMP pings to scan 254 hosts in ~3 seconds.
-    Returns IP addresses and hostnames of live devices.
-    Use for: finding devices on your WiFi/network, network inventory."""
-    print("[Tool] local_network_scan()")
-    result = _network_scan()
-    hosts = result.get("hosts", [])
-    if not hosts:
-        return f"No devices found on subnet {result['subnet']}.0/24."
-    lines = [f"Subnet: {result['subnet']}.0/24 — {len(hosts)} devices found:\n"]
-    for h in hosts:
-        name = f" ({h['hostname']})" if h["hostname"] else ""
-        lines.append(f"  {h['ip']}{name}")
-    return "\n".join(lines)
-
-
-
-
-
-@needle.tool
-def subnet_port_sweep(port: int = 80) -> str:
-    """Sweep your entire local subnet to find which hosts have a specific port open.
-    Use for: finding web servers (port 80/443), SSH servers (port 22),
-    or any service running on your network."""
-    print(f"[Tool] subnet_port_sweep({port})")
-    result = _port_sweep(port)
-    hosts = result.get("open_hosts", [])
-    if not hosts:
-        return f"No hosts found with port {port} open."
-    lines = [f"Port {port} open on {len(hosts)} hosts:"]
-    for ip in hosts:
-        lines.append(f"  {ip}")
-    return "\n".join(lines)
-
-
-
-
-@needle.tool
-def local_port_scan(ip: str, ports: str = "") -> str:
-    """Scan up to 100 ports on a target IP address.
-    Use for: finding open services on a specific machine.
-    Ports default to common services (22, 80, 443, 3306, etc.).
-    Optionally pass a comma-separated list of specific ports."""
-    print(f"[Tool] local_port_scan('{ip}', '{ports}')")
-    port_list = None
-    if ports:
-        try:
-            port_list = [int(p.strip()) for p in ports.split(",") if p.strip()]
-        except ValueError:
-            return "Error: ports must be comma-separated numbers."
-    result = _port_scan(ip, port_list)
-    open_ports = result.get("open_ports", [])
-    if not open_ports:
-        return f"No open ports found on {ip}."
-    lines = [f"Open ports on {ip}:"]
-    for p in open_ports:
-        lines.append(f"  Port {p['port']}: {p['service']}")
-    return "\n".join(lines)
-
-
-
-
-
-
-
-
-
-
-@needle.tool
-def list_local_listeners() -> str:
-    """List all active listening ports on this PC.
-    Use for: checking what services are running, debugging network issues,
-    finding which ports are in use."""
-    print("[Tool] list_local_listeners()")
-    listeners = _listeners()
-    if not listeners:
-        return "No listening ports found."
-    lines = [f"{len(listeners)} listening ports:\n"]
-    for entry in listeners:
-        proto = entry.get("protocol", "")
-        addr = entry.get("local_address", "")
-        proc = entry.get("process", "")
-        pid = entry.get("pid", "")
-        proc_info = ""
-        if proc:
-            proc_info = f" ({proc})"
-        elif pid:
-            proc_info = f" (PID: {pid})"
-        lines.append(f"  {proto} {addr}{proc_info}")
-    return "\n".join(lines)
 
 
 
@@ -143,6 +42,11 @@ def detect_arp_spoofing() -> str:
     return "\n".join(lines)
 
 
+
+
+
+
+
 @needle.tool
 def audit_vpn_connection() -> str:
     """Audit your current VPN/proxy connection status.
@@ -156,7 +60,13 @@ def audit_vpn_connection() -> str:
     lines.append(f"  Country: {result.get('country', 'unknown')}")
     org = result.get("org", "")
     if org:
+
+
         lines.append(f"  Org: {org}")
+
+
+
+
 
     if result.get("vpn_likely"):
         lines.append("\n⚠ VPN/Proxy detected in ISP/org info.")
@@ -167,6 +77,9 @@ def audit_vpn_connection() -> str:
         lines.append(f"  ℹ {detail}")
 
     return "\n".join(lines)
+
+
+
 
 
 @needle.tool
@@ -182,6 +95,8 @@ def audit_website_security(url: str) -> str:
     lines.append(f"  Grade: {result.get('grade', '?')}\n")
 
 
+
+
     ssl_info = result.get("ssl", {})
     if ssl_info.get("error"):
         lines.append(f"  SSL Error: {ssl_info['error']}")
@@ -195,6 +110,7 @@ def audit_website_security(url: str) -> str:
         if expires:
             days = ssl_info.get("days_until_expiry", "?")
             lines.append(f"    Expires: {expires} ({days} days left)")
+
 
 
 
@@ -215,9 +131,8 @@ def audit_website_security(url: str) -> str:
     return "\n".join(lines)
 
 
-# ═══════════════════════════════════════════════════════════════════════
-# DNS & Domain Intelligence
-# ═══════════════════════════════════════════════════════════════════════
+
+
 
 @needle.tool
 def dns_lookup(domain: str, record_type: str = "A") -> str:
@@ -238,11 +153,9 @@ def dns_lookup(domain: str, record_type: str = "A") -> str:
     lines = [f"DNS {record_type} records for {domain}:"]
     for r in records:
         lines.append(f"  {r['data']} (TTL: {r['ttl']}s)")
+
+
     return "\n".join(lines)
-
-
-
-
 
 
 
@@ -274,9 +187,6 @@ def whois_lookup(domain: str) -> str:
 
 
 
-
-
-
 @needle.tool
 def ip_geolocation_lookup(ip: str) -> str:
     """Look up geographic location and ISP for an IP address.
@@ -299,6 +209,8 @@ def ip_geolocation_lookup(ip: str) -> str:
     if result.get("hosting"):
         lines.append("  ℹ Hosting/datacenter IP")
     return "\n".join(lines)
+
+
 
 
 

@@ -113,6 +113,15 @@ from agent.runner.dns_intel import (
     check_subdomain_takeover,
 )
 
+# hashing
+from agent.runner.hashing import generate_checksum, hash_string, identify_hash
+
+# jwt
+from agent.runner.jwt_analyzer import decode_jwt
+
+# forensics
+from agent.runner.forensics import analyze_pcap, analyze_apk, search_file_content
+
 __all__ = [
     # common
     "CREATE_NO_WINDOW",
@@ -201,4 +210,14 @@ __all__ = [
     "whois_lookup",
     "ip_geolocation_lookup",
     "check_subdomain_takeover",
+    # hashing
+    "generate_checksum",
+    "hash_string",
+    "identify_hash",
+    # jwt
+    "decode_jwt",
+    # forensics
+    "analyze_pcap",
+    "analyze_apk",
+    "search_file_content",
 ]

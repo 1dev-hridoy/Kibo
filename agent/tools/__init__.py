@@ -54,11 +54,16 @@ from agent.tools.multi_pc import (
     register_remote_pc, unregister_remote_pc, list_remote_pcs,
     switch_to_pc, get_current_pc, ping_remote_pc, execute_on_remote_pc,
 )
-from agent.tools.security import (
-    local_network_scan, subnet_port_sweep, local_port_scan,
-    list_local_listeners, detect_arp_spoofing, audit_vpn_connection,
-    audit_website_security, dns_lookup, whois_lookup,
-    ip_geolocation_lookup, check_subdomain_takeover,
+from agent.tools.tools_network import (
+    local_network_scan, subnet_port_sweep, local_port_scan, list_local_listeners,
+)
+from agent.tools.tools_audit import (
+    detect_arp_spoofing, audit_vpn_connection, audit_website_security,
+    dns_lookup, whois_lookup, ip_geolocation_lookup, check_subdomain_takeover,
+)
+from agent.tools.tools_crypto import (
+    generate_file_checksum, hash_text, identify_hash_algorithm,
+    decode_jwt_token, analyze_pcap_file, analyze_apk_permissions, search_content,
 )
 
 ALL_TOOLS = [
@@ -115,4 +120,8 @@ ALL_TOOLS = [
     list_local_listeners, detect_arp_spoofing, audit_vpn_connection,
     audit_website_security, dns_lookup, whois_lookup,
     ip_geolocation_lookup, check_subdomain_takeover,
+    # crypto / forensic
+    generate_file_checksum, hash_text, identify_hash_algorithm,
+    decode_jwt_token, analyze_pcap_file, analyze_apk_permissions,
+    search_content,
 ]
