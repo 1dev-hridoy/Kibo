@@ -14,6 +14,18 @@ from agent.logs import user_input, ai_response, error, startup, info
 PID_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".telegram_bot.pid")
 
 
+def _guard(bot, chat_id):
+    """Block unauthorized chats from sending commands."""
+    from agent.telegram.auth import is_allowed
+    if is_allowed(chat_id):
+        return True
+    try:
+        bot.send_message(chat_id, "🚫 Access denied. This bot is private.")
+    except Exception:
+        pass
+    return False
+
+
 def _acquire_lock():
     """Kill any existing bot instance and claim the PID file."""
     if os.path.exists(PID_FILE):
@@ -115,6 +127,9 @@ def _handle_callback(bot, call):
     """Handle inline keyboard callback queries."""
     data = call.data
     chat_id = call.message.chat.id
+
+    if not _guard(bot, chat_id):
+        return
 
     # Show typing indicator
     bot.send_chat_action(chat_id, "typing")
@@ -274,11 +289,15 @@ def start_telegram(token: str):
     # ── Command handlers ─────────────────────────────────────────────
     @bot.message_handler(commands=["start", "help"])
     def send_welcome(message):
+        if not _guard(bot, message.chat.id):
+            return
         user_input("telegram", "/start")
         bot.reply_to(message, _get_help_text(), reply_markup=_build_main_keyboard())
 
     @bot.message_handler(commands=["screenshot", "ss"])
     def cmd_screenshot(message):
+        if not _guard(bot, message.chat.id):
+            return
         user_input("telegram", "/screenshot")
         bot.send_chat_action(message.chat.id, "upload_photo")
         try:
@@ -359,6 +378,8 @@ def start_telegram(token: str):
 
     @bot.message_handler(commands=["model"])
     def cmd_model(message):
+        if not _guard(bot, message.chat.id):
+            return
         from agent.model_manager import get_active_model, MODELS
         current = get_active_model()
         info = MODELS.get(current, {})
@@ -389,6 +410,30 @@ def start_telegram(token: str):
         else:
             bot.reply_to(message, "Usage: /run <command>")
 
+    @bot.message_handler(commands=["chatid", "id"])
+    def cmd_chatid(message):
+        cid = message.chat.id
+        kind = message.chat.type
+        bot.reply_to(message,
+            f"Chat ID: <code>{cid}</code>\nType: {kind}\n"
+            f"Add it with <code>/allow {cid}</code> (owner only) or "
+            f"AGENT_TELEGRAM_ALLOWED_CHATS.")
+
+    @bot.message_handler(commands=["allow", "unlock"])
+    def cmd_allow(message):
+        if not _guard(bot, message.chat.id):
+            return
+        from agent.telegram.auth import owner_ids, add_allowed
+        if message.chat.id not in owner_ids():
+            bot.reply_to(message, "Only the owner chat can add chats.")
+            return
+        args = message.text.split(maxsplit=1)
+        if len(args) < 2 or not args[1].strip().lstrip("-").isdigit():
+            bot.reply_to(message, "Usage: /allow <chat_id>")
+            return
+        ids = add_allowed(int(args[1].strip()))
+        bot.reply_to(message, f"Allowed chats: {', '.join(map(str, ids))}")
+
     @bot.message_handler(commands=["open"])
     def cmd_open(message):
         args = message.text.split(maxsplit=1)
@@ -407,6 +452,8 @@ def start_telegram(token: str):
     def handle(message):
         user_text = message.text.strip()
         if not user_text:
+            return
+        if not _guard(bot, message.chat.id):
             return
 
         user_input("telegram", user_text)
@@ -470,6 +517,8 @@ def start_telegram(token: str):
 
 def _run_command(bot, message, command):
     """Run a command with typing indicator."""
+    if not _guard(bot, message.chat.id):
+        return
     bot.send_chat_action(message.chat.id, "typing")
     user_input("telegram", command)
     try:
