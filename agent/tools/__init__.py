@@ -65,6 +65,10 @@ from agent.tools.tools_crypto import (
     generate_file_checksum, hash_text, identify_hash_algorithm,
     decode_jwt_token, analyze_pcap_file, analyze_apk_permissions, search_content,
 )
+from agent.tools.voice_tools import (
+    voice_start_listener, voice_stop_listener, voice_listener_status,
+    voice_listen_now, voice_transcribe_only,
+)
 
 ALL_TOOLS = [
     # System (10)
@@ -124,4 +128,7 @@ ALL_TOOLS = [
     generate_file_checksum, hash_text, identify_hash_algorithm,
     decode_jwt_token, analyze_pcap_file, analyze_apk_permissions,
     search_content,
+    # voice
+    voice_start_listener, voice_stop_listener, voice_listener_status,
+    voice_listen_now, voice_transcribe_only,
 ]

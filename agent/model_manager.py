@@ -331,5 +331,10 @@ def create_backend(tools):
     """Create the appropriate backend based on active model."""
     model = get_active_model()
     if model == "functiongemma":
-        return FunctionGemmaBackend(tools)
+        try:
+            return FunctionGemmaBackend(tools)
+        except ImportError:
+            print("[Model] FunctionGemma unavailable (llama-cpp-python missing), falling back to Needle")
+            set_active_model("needle")
+            return NeedleBackend(tools)
     return NeedleBackend(tools)

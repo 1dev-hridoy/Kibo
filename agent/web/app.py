@@ -289,6 +289,82 @@ def read_from_session(session_id):
 
 
 
+@app.route("/api/voice/listen", methods=["POST"])
+def voice_listen():
+    """Listen for a voice command and process it."""
+    import threading
+    if not hasattr(voice_listen, "_lock"):
+        voice_listen._lock = threading.Lock()
+    if not voice_listen._lock.acquire(blocking=False):
+        return jsonify({"heard": "", "response": "Already listening — wait for the current recording to finish."}), 409
+
+    try:
+        data = request.get_json(force=True) if request.is_json else {}
+        duration = data.get("duration", 10)
+
+        from agent.runner.voice import listen_once
+        from agent.core.ask import ask as agent_ask
+
+        print(f"[Voice API] Listening for {duration}s...")
+        text = listen_once(timeout=float(duration))
+        print(f"[Voice API] Heard: '{text}'")
+
+        if not text:
+            return jsonify({"heard": "", "response": "No speech detected."})
+
+        try:
+            result = agent_ask(text)
+            response = result.get("text", "") if isinstance(result, dict) else str(result)
+            print(f"[Voice API] Response: '{response[:100]}...'")
+        except Exception as e:
+            response = f"Error: {e}"
+            print(f"[Voice API] Error: {e}")
+
+        return jsonify({"heard": text, "response": response})
+    finally:
+        voice_listen._lock.release()
+
+
+@app.route("/api/voice/listen-only", methods=["POST"])
+def voice_listen_only():
+    """Listen and transcribe without processing."""
+    data = request.get_json(force=True) if request.is_json else {}
+    duration = data.get("duration", 10)
+
+    from agent.runner.voice import listen_once
+    text = listen_once(timeout=float(duration))
+    return jsonify({"heard": text})
+
+
+@socketio.on("voice:stream")
+def handle_voice_stream(data):
+    """Stream voice audio from browser, transcribe in real-time."""
+    import base64
+    audio_b64 = data.get("audio", "")
+    if not audio_b64:
+        emit("voice:transcript", {"text": "", "error": "No audio data"})
+        return
+
+    try:
+        import vosk
+        import json as _json
+
+        audio_bytes = base64.b64decode(audio_b64)
+        model_dir = os.path.expanduser("~/.config/kibo/vosk_models/vosk-model-small-en-us-0.15")
+        if not os.path.isdir(model_dir):
+            emit("voice:transcript", {"text": "", "error": "Vosk model not installed"})
+            return
+
+        model = vosk.KaldiRecognizer(vosk.Model(model_dir), 16000)
+        model.AcceptWaveform(audio_bytes)
+        result = _json.loads(model.FinalResult())
+        text = result.get("text", "")
+        emit("voice:transcript", {"text": text})
+    except Exception as e:
+        emit("voice:transcript", {"text": "", "error": str(e)})
+
+
+
 
 
 
@@ -344,6 +420,15 @@ def replay_macro_api():
 
 def start_web(host: str = WEB_HOST, port: int = WEB_PORT):
     """Start the web server with WebSocket support."""
-    startup("Web", f"http://{host}:{port}")
-    print(f"Kibo Web UI: http://{host}:{port}")
-    socketio.run(app, host=host, port=port, debug=False, allow_unsafe_werkzeug=True)
+    from agent.config import WEB_SSL, SSL_CERT, SSL_KEY
+    ssl_context = None
+    scheme = "http"
+    if WEB_SSL and os.path.exists(SSL_CERT) and os.path.exists(SSL_KEY):
+        ssl_context = (SSL_CERT, SSL_KEY)
+        scheme = "https"
+    elif WEB_SSL:
+        print("[Web] SSL requested but cert not found, falling back to HTTP")
+    startup("Web", f"{scheme}://{host}:{port}")
+    print(f"Kibo Web UI: {scheme}://{host}:{port}")
+    socketio.run(app, host=host, port=port, debug=False,
+                 allow_unsafe_werkzeug=True, ssl_context=ssl_context)

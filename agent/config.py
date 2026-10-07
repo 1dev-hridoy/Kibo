@@ -71,9 +71,14 @@ CMD_TIMEOUT = 15  # seconds
 
 # ── Web server ─────────────────────────────────────────────────────────
 WEB_HOST = os.environ.get("AGENT_HOST",
-                          os.environ.get("HARNESS_HOST", "127.0.0.1"))
+                          os.environ.get("HARNESS_HOST", "0.0.0.0"))
 WEB_PORT = int(os.environ.get("AGENT_PORT",
                               os.environ.get("HARNESS_PORT", 5000)))
+
+WEB_SSL = os.environ.get("AGENT_SSL", os.environ.get("HARNESS_SSL", "0")) == "1"
+SSL_CERT_DIR = os.path.expanduser("~/.config/kibo/certs")
+SSL_CERT = os.path.join(SSL_CERT_DIR, "cert.pem")
+SSL_KEY = os.path.join(SSL_CERT_DIR, "key.pem")
 
 # ── Telegram (set via env or CLI flag) ─────────────────────────────────
 TELEGRAM_TOKEN = os.environ.get(

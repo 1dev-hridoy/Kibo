@@ -131,6 +131,7 @@
             <button onclick="document.getElementById('screen-dialog').showModal()">Live Screen</button>
             <button onclick="openTerminal()">Terminal</button>
             <button onclick="document.getElementById('macro-dialog').showModal()">Macros</button>
+            <button id="voice-btn" onclick="toggleVoice()" title="Voice input (Web Speech API)">🎤 Voice</button>
         </div>
 
         <div id="msgs">
@@ -534,6 +535,143 @@
             }
 
             document.getElementById("macro-dialog").addEventListener("open", loadMacros);
+
+            let voiceActive = false;
+            let voiceRecognition = null;
+            let voiceMode = "unsupported"; // "webapi" | "vosk" | "unsupported"
+
+            (function detectVoiceMode() {
+                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                if (
+                    SpeechRecognition &&
+                    (location.protocol === "https:" ||
+                        location.hostname === "localhost" ||
+                        location.hostname === "127.0.0.1")
+                ) {
+                    voiceMode = "webapi";
+                } else if (location.protocol === "http:" || location.protocol === "https:") {
+                    voiceMode = "vosk";
+                }
+            })();
+
+            function toggleVoice() {
+                const btn = document.getElementById("voice-btn");
+                if (voiceActive) {
+                    stopVoice();
+                    btn.textContent = "🎤 Voice";
+                    btn.style.background = "";
+                } else {
+                    startVoice();
+                    btn.textContent = "⏹ Stop";
+                    btn.style.background = "#e74c3c";
+                }
+            }
+
+            function startVoice() {
+                voiceActive = true;
+                if (voiceMode === "webapi") {
+                    startWebSpeech();
+                } else if (voiceMode === "vosk") {
+                    startVosk();
+                } else {
+                    addMsg("Kibo", "agent", "Voice not supported. Open in Chrome/Edge over HTTPS or localhost.");
+                    voiceActive = false;
+                }
+            }
+
+            function stopVoice() {
+                voiceActive = false;
+                if (voiceRecognition) {
+                    voiceRecognition.stop();
+                    voiceRecognition = null;
+                }
+            }
+
+            function startWebSpeech() {
+                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                voiceRecognition = new SpeechRecognition();
+                voiceRecognition.continuous = true;
+                voiceRecognition.interimResults = true;
+                voiceRecognition.lang = "en-US";
+
+                voiceRecognition.onresult = event => {
+                    let finalTranscript = "";
+                    for (let i = event.resultIndex; i < event.results.length; i++) {
+                        if (event.results[i].isFinal) {
+                            finalTranscript += event.results[i][0].transcript;
+                        }
+                    }
+                    if (finalTranscript) {
+                        addMsg(finalTranscript, "user");
+                        sendVoiceCommand(finalTranscript);
+                    }
+                };
+
+                voiceRecognition.onerror = event => {
+                    if (event.error !== "no-speech") {
+                        console.warn("Voice error:", event.error);
+                    }
+                };
+
+                voiceRecognition.onend = () => {
+                    if (voiceActive) voiceRecognition.start();
+                };
+
+                voiceRecognition.start();
+                addMsg("Kibo", "agent", "🎤 Listening (browser mic)... Speak your command.");
+            }
+
+            async function startVosk() {
+                addMsg("Kibo", "agent", "🎤 Listening via server mic (10s)... Speak now!");
+                try {
+                    const res = await fetch("/api/voice/listen", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ duration: 10 }),
+                    });
+                    const data = await res.json();
+                    if (data.heard) {
+                        addMsg(data.heard, "user");
+                        let html = esc(data.response || "No response");
+                        addMsg("Kibo", "agent", html);
+                    } else {
+                        addMsg(
+                            "Kibo",
+                            "agent",
+                            esc(data.response || "No speech detected. Try speaking closer to the mic."),
+                        );
+                    }
+                } catch (err) {
+                    addMsg("Kibo", "agent", "Voice error: " + esc(err.message));
+                }
+                voiceActive = false;
+                const btn = document.getElementById("voice-btn");
+                btn.textContent = "🎤 Voice";
+                btn.style.background = "";
+            }
+
+            async function sendVoiceCommand(text) {
+                try {
+                    const res = await fetch("/api/chat", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ message: text }),
+                    });
+                    const data = await res.json();
+                    let html = esc(data.response || data.error || "No response");
+                    if (data.tools && data.tools.length > 0) {
+                        html +=
+                            "<details><summary>" +
+                            data.tools.length +
+                            " tool call(s)</summary><pre><code>" +
+                            esc(data.tools.join("\n")) +
+                            "</code></pre></details>";
+                    }
+                    addMsg("Kibo", "agent", html);
+                } catch (err) {
+                    addMsg("Kibo", "agent", "Error: " + esc(err.message));
+                }
+            }
         </script>
     </body>
 </html>

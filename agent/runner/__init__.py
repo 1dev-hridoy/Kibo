@@ -122,6 +122,9 @@ from agent.runner.jwt_analyzer import decode_jwt
 # forensics
 from agent.runner.forensics import analyze_pcap, analyze_apk, search_file_content
 
+
+from agent.runner.voice import listen_once, listen_continuous
+
 __all__ = [
     # common
     "CREATE_NO_WINDOW",
@@ -220,4 +223,6 @@ __all__ = [
     "analyze_pcap",
     "analyze_apk",
     "search_file_content",
+    "listen_once",
+    "listen_continuous",
 ]
