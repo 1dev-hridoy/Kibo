@@ -47,6 +47,10 @@ class SpaceBackground(tk.Canvas):
     def set_state_tint(self, state):
         self.state_tint = self.STATE_TINTS.get(state, self.STATE_TINTS["idle"])
 
+    def base_hex(self):
+        r, g, b = self.state_tint
+        return f"#{r:02x}{g:02x}{b:02x}"
+
 
 
 

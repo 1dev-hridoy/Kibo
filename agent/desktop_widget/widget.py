@@ -45,6 +45,10 @@ class AnimLabel(tk.Label):
             self.config(fg=self._target_fg)
         self._anim_id = self.after(45, lambda: self._fade_in(text, step + 1))
 
+    def set_bg(self, color):
+        self._bg = color
+        self.config(bg=color)
+
     def hide(self):
         if self._anim_id:
             try:
@@ -115,7 +119,8 @@ class KiboWidget:
         self.avatar.pack(expand=True)
 
         self.text_frame = tk.Frame(self.frame, bg=bg)
-        tk.Frame(self.text_frame, bg=bg).pack(fill="x", expand=True)
+        self._space_top = tk.Frame(self.text_frame, bg=bg)
+        self._space_top.pack(fill="x", expand=True)
 
         self.status_label = AnimLabel(self.text_frame, bg=bg, fg=fg,
                                        font=("Segoe UI", fs, "bold"),
@@ -130,7 +135,8 @@ class KiboWidget:
                                      fg=self.cfg.get("tool_color", "#94e2d5"),
                                      font=("Consolas", fs - 2), anchor="w")
         self.tool_label.pack(fill="x", pady=1)
-        tk.Frame(self.text_frame, bg=bg).pack(fill="x", expand=True)
+        self._space_bottom = tk.Frame(self.text_frame, bg=bg)
+        self._space_bottom.pack(fill="x", expand=True)
 
         self.model_var = tk.StringVar(value="")
         self.model_label = tk.Label(self.frame, textvariable=self.model_var,
@@ -202,6 +208,8 @@ class KiboWidget:
             self.avatar.set_mode("mochi")
             self.frame.set_state_tint(state)
 
+        self._sync_text_bg()
+
         if state == "idle" and recently_active and \
            self._last_state in ("working", "custom"):
             self.avatar.celebrate()
@@ -264,6 +272,14 @@ class KiboWidget:
             self.tool_label.hide()
 
         self._last_state = state
+
+    def _sync_text_bg(self):
+        color = self.frame.base_hex()
+        self.text_frame.config(bg=color)
+        self._space_top.config(bg=color)
+        self._space_bottom.config(bg=color)
+        for lbl in (self.status_label, self.task_label, self.tool_label):
+            lbl.set_bg(color)
 
     def _show_menu(self, event):
         menu = tk.Menu(self.root, tearoff=0, bg="#1e1e2e", fg="#cdd6f4",
