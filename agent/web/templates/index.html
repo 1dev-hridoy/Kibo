@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kibo</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+  <link href="/static/css/app.css" rel="stylesheet">
+  <link href="/static/css/chat.css" rel="stylesheet">
+</head>
+<body>
+  <nav class="navbar navbar-expand-lg px-3 py-2 mb-3">
+    <div class="container-fluid p-0">
+      <a class="navbar-brand" href="/"><i class="bi bi-robot"></i> Kibo</a>
+      <div class="d-flex align-items-center gap-2">
+        <span class="badge rounded-pill badge-model" onclick="showModelPicker()">
+          <span class="status-dot"></span> <span id="model-name">Loading...</span>
+        </span>
+        <a href="/tools" class="btn btn-sm btn-outline-secondary btn-tool"><i class="bi bi-grid"></i> Tools</a>
+        <div class="dropdown">
+          <button class="btn btn-sm btn-outline-secondary btn-tool" data-bs-toggle="dropdown"><i class="bi bi-three-dots"></i></button>
+          <ul class="dropdown-menu dropdown-menu-end">
+            <li><button class="dropdown-item" onclick="showModelPicker()"><i class="bi bi-cpu"></i> Switch model</button></li>
+            <li><button class="dropdown-item" onclick="document.getElementById('screen-dialog').showModal()"><i class="bi bi-display"></i> Live screen</button></li>
+            <li><button class="dropdown-item" onclick="openTerminal()"><i class="bi bi-terminal"></i> Terminal</button></li>
+            <li><button class="dropdown-item" onclick="loadMacros();document.getElementById('macro-dialog').showModal()"><i class="bi bi-magic"></i> Macros</button></li>
+            <li><button class="dropdown-item" onclick="loadHistory()"><i class="bi bi-clock-history"></i> Load history</button></li>
+            <li><button class="dropdown-item" onclick="clearChat()"><i class="bi bi-trash"></i> Clear chat</button></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <div class="chat-shell">
+    <div id="msgs">
+      <div class="msg agent">
+        <div class="who">Kibo</div>
+        <div class="bubble">Ready. Tell me what to do on this PC.</div>
+      </div>
+    </div>
+
+    <div class="position-relative mt-3 chat-bar">
+      <div id="cmd-menu" class="cmd-menu d-none"></div>
+      <form class="d-flex gap-2" id="chat">
+        <input id="input" class="form-control" placeholder="Message Kibo — type / for commands" autocomplete="off">
+        <button class="btn btn-primary" type="submit"><i class="bi bi-send"></i><span class="d-none d-sm-inline ms-1">Send</span></button>
+        <button type="button" class="btn btn-outline-secondary" id="voice-btn" onclick="toggleVoice()" title="Voice input"><i class="bi bi-mic"></i> Voice</button>
+      </form>
+    </div>
+  </div>
+
+  <dialog id="model-dialog" class="border-0 rounded-4 shadow" style="max-width: 420px; width: 92vw;">
+    <div class="p-3">
+      <h5 class="mb-3"><i class="bi bi-cpu"></i> Switch model</h5>
+      <div id="model-list"></div>
+      <button class="btn btn-sm btn-outline-secondary mt-2" onclick="document.getElementById('model-dialog').close()">Close</button>
+    </div>
+  </dialog>
+
+  <dialog id="screen-dialog" class="border-0 rounded-4 shadow" style="max-width: 860px; width: 94vw;">
+    <div class="p-3">
+      <h5 class="mb-3"><i class="bi bi-display"></i> Live screen</h5>
+      <img id="live-screen" class="img-fluid rounded border" src="/api/screenshot" onclick="refreshScreen()" title="Click to refresh">
+      <div class="d-flex gap-2 mt-3">
+        <button class="btn btn-sm btn-primary" id="live-btn" onclick="toggleLiveView()"><i class="bi bi-play"></i> Start live view</button>
+        <button class="btn btn-sm btn-outline-secondary" onclick="refreshScreen()"><i class="bi bi-arrow-clockwise"></i> Refresh</button>
+        <button class="btn btn-sm btn-outline-secondary" onclick="document.getElementById('screen-dialog').close()">Close</button>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog id="terminal-dialog" class="border-0 rounded-4 shadow" style="max-width: 760px; width: 94vw;">
+    <div class="p-3">
+      <h5 class="mb-3"><i class="bi bi-terminal"></i> Terminal</h5>
+      <div id="terminal-container" class="rounded p-3 mb-2" style="background:#0f172a;color:#e2e8f0;font-family:monospace;font-size:13px;height:360px;overflow-y:auto;white-space:pre-wrap;"></div>
+      <div class="d-flex gap-2">
+        <input id="terminal-input" class="form-control form-control-sm font-monospace" placeholder="Type command..." onkeydown="if(event.key==='Enter'){sendTerminalInput();event.preventDefault();}">
+        <button class="btn btn-sm btn-primary" onclick="sendTerminalInput()"><i class="bi bi-arrow-up-circle"></i></button>
+        <button class="btn btn-sm btn-outline-secondary" onclick="document.getElementById('terminal-dialog').close()">Close</button>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog id="macro-dialog" class="border-0 rounded-4 shadow" style="max-width: 460px; width: 92vw;">
+    <div class="p-3">
+      <h5 class="mb-3"><i class="bi bi-magic"></i> Macros</h5>
+      <div id="macro-list" class="mb-3">Loading...</div>
+      <div class="d-flex gap-2">
+        <input id="macro-name" class="form-control form-control-sm" placeholder="Macro name">
+        <button class="btn btn-sm btn-danger" onclick="startMacroRec()"><i class="bi bi-record-circle"></i> Record</button>
+        <button class="btn btn-sm btn-outline-secondary" onclick="stopMacroRec()"><i class="bi bi-stop-circle"></i> Stop</button>
+      </div>
+      <button class="btn btn-sm btn-outline-secondary mt-3" onclick="document.getElementById('macro-dialog').close()">Close</button>
+    </div>
+  </dialog>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <script src="/static/js/chat-core.js"></script>
+  <script src="/static/js/app.js"></script>
+  <script src="/static/js/chat.js"></script>
+  <script src="/static/js/voice.js"></script>
+  <script src="/static/js/terminal.js"></script>
+  <script src="/static/js/macro.js"></script>
+</body>
+</html>

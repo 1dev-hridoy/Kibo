@@ -1,5 +1,5 @@
 """
-Flask web server — provides the water.css chat UI and REST API.
+Flask web server Bootstrap chat UI, tools page and REST API.
 """
 
 import os
@@ -7,21 +7,19 @@ import sys
 import json
 import secrets
 
-from flask import Flask, request, jsonify, render_template_string, send_file, session, redirect, url_for
+from flask import Flask, request, jsonify, render_template, render_template_string, send_file, session, redirect, url_for
 from flask_socketio import SocketIO, emit
 from agent.core import ask
 from agent.config import WEB_HOST, WEB_PORT
 from agent.tools import ALL_TOOLS
 from agent.logs import user_input, ai_response, error, startup
 
-app = Flask(__name__)
+_template_dir = os.path.dirname(os.path.abspath(__file__))
+
+app = Flask(__name__, template_folder=os.path.join(_template_dir, "templates"),
+            static_folder=os.path.join(_template_dir, "static"))
 app.secret_key = os.urandom(24)
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode="threading")
-
-_template_dir = os.path.dirname(os.path.abspath(__file__))
-_template_path = os.path.join(_template_dir, "template.html")
-with open(_template_path) as _f:
-    HTML_TEMPLATE = _f.read()
 
 
 def _check_auth():
@@ -73,7 +71,14 @@ def remove_auth():
 def index():
     if not _check_auth():
         return redirect(url_for("login"))
-    return render_template_string(HTML_TEMPLATE)
+    return render_template("index.html")
+
+
+@app.route("/tools")
+def tools_page():
+    if not _check_auth():
+        return redirect(url_for("login"))
+    return render_template("tools.html")
 
 
 @app.route("/login", methods=["GET", "POST"])
@@ -143,8 +148,11 @@ def serve_media():
 @app.route("/api/tools")
 def list_tools():
     """Return the list of registered tool names."""
-    names = [t.__name__ for t in ALL_TOOLS]
-    return jsonify({"tools": names})
+    items = [
+        {"name": t.__name__, "description": (t.__doc__ or "").strip().split("\n")[0]}
+        for t in ALL_TOOLS
+    ]
+    return jsonify({"tools": items})
 
 
 @app.route("/api/model", methods=["GET"])
