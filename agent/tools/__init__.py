@@ -70,6 +70,9 @@ from agent.tools.voice_tools import (
     voice_listen_now, voice_transcribe_only,
 )
 from agent.tools.widget_tools import widget_set_message, widget_clear
+from agent.tools.autostart_tools import (
+    autostart_enable, autostart_disable, autostart_status,
+)
 
 ALL_TOOLS = [
     # System (10)
@@ -134,4 +137,5 @@ ALL_TOOLS = [
     voice_listen_now, voice_transcribe_only,
     # widget
     widget_set_message, widget_clear,
+    autostart_enable, autostart_disable, autostart_status,
 ]

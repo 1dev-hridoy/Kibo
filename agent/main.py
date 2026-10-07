@@ -15,9 +15,32 @@ import os
 from .config import TELEGRAM_TOKEN, WEB_PORT
 
 
+_PROMPTED_FLAG = os.path.expanduser("~/.config/kibo/autostart_prompted")
+
+
+def _maybe_prompt_autostart():
+    try:
+        if os.path.exists(_PROMPTED_FLAG):
+            return
+        if not sys.stdin.isatty():
+            return
+        os.makedirs(os.path.dirname(_PROMPTED_FLAG), exist_ok=True)
+        ans = input("Start Kibo automatically when this PC starts? [y/N]: ").strip().lower()
+        open(_PROMPTED_FLAG, "w").write(ans or "n")
+        if ans in ("y", "yes"):
+            from agent.runner.autostart import enable
+            print(enable())
+        else:
+            print("OK - Kibo will not autostart. You can change this anytime by asking me.")
+    except Exception:
+        pass
+
+
 def main():
     args = sys.argv[1:]
     mode = args[0].lower() if args else "cli"
+
+    _maybe_prompt_autostart()
 
     if mode == "web":
         from agent.web import start_web
