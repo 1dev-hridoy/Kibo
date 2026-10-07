@@ -16,9 +16,15 @@ _GREETING = re.compile(
     r"good (?:bot|job|work)|nice)[!,.? ]*$", re.I)
 
 
+def _tools_count():
+    from agent.tools import ALL_TOOLS
+    return len(ALL_TOOLS)
+
+
 def _tools_list():
-    """Return a formatted list of all available tools."""
-    lines = ["I have 57 tools:\n"]
+    """Return a formatted list of real tool names grouped by module."""
+    from agent.tools import ALL_TOOLS
+    lines = [f"I have {len(ALL_TOOLS)} tools. Some of them:\n"]
     lines.append("SYSTEM: show_toast, show_notification, get_battery_status,")
     lines.append("  set_clipboard, get_clipboard, set_screen_brightness,")
     lines.append("  get_volume_info, set_volume, lock_the_screen, get_system_stats")
@@ -34,21 +40,9 @@ def _tools_list():
     lines.append("LOGS: view_system_logs")
     lines.append("PACKAGES: install_package, uninstall_package")
     lines.append("")
-    lines.append("ADVANCED TOOLS:")
-    lines.append("TERMINAL: remote_terminal, remote_terminal_background")
-    lines.append("  Execute any shell command remotely")
-    lines.append("LAUNCHER: launch_app_smart, get_recent_apps, search_apps")
-    lines.append("  Smart app search and launch")
-    lines.append("CLIPBOARD SYNC: clipboard_sync_push, pull, list, clear")
-    lines.append("  Sync clipboard across devices")
-    lines.append("MEDIA: play_media, stop_media, get_media_status, set_media_volume")
-    lines.append("  Stream audio/video from URLs")
-    lines.append("VOICE: voice_record_start, voice_record_stop, voice_speak, voice_list_devices")
-    lines.append("  Voice input/output and recording")
-    lines.append("")
-    lines.append("MODEL COMMANDS:")
-    lines.append("  models / needle / gemma  — Switch AI models")
-    lines.append("\nJust tell me what to do naturally!")
+    names = [t.__name__ for t in ALL_TOOLS]
+    lines.append("RECENT: " + ", ".join(names[:12]) + " ...")
+    lines.append("\nType 'models' to switch models, 'tools' for more.")
     return "\n".join(lines)
 
 
@@ -61,17 +55,20 @@ def _smalltalk(text):
     if re.search(r"thank|thx|\bty\b|good (bot|job|work)|nice", t):
         return "You're welcome! Anything else on this PC?"
     if re.search(r"how are you|how('?s| is) it going|what('?s| is) up|sup", t):
-        return "Running smoothly — all 57 PC tools are ready."
+        import random
+        return random.choice([
+            f"Running smoothly — all {_tools_count()} PC tools are ready.",
+            f"Doing great! {_tools_count()} tools standing by.",
+            f"Always ready with {_tools_count()} tools at your command.",
+        ])
     if re.search(r"who are you|^help", t):
-        return ("I'm your local PC agent with 57 tools. I can:\n"
-                "- Execute shell commands (remote_terminal)\n"
-                "- Launch and search apps (launch_app_smart)\n"
-                "- Sync clipboard across devices\n"
-                "- Play media from URLs\n"
-                "- Record voice and speak text\n"
-                "- Control volume, brightness, screenshots\n"
-                "- Manage files, processes, and packages\n\n"
-                "Try: \"run ls -la\", \"open firefox\", \"play music\"")
+        import random
+        n = _tools_count()
+        return random.choice([
+            f"I'm Kibo, your local PC agent with {n} tools on this machine. I can run shell commands, open apps, manage files, control volume/brightness, take screenshots, do network and security scans, and more. Try: \"run ls -la\", \"open firefox\", \"take a screenshot\".",
+            f"I'm Kibo — a private, on-device assistant with {n} tools. I can do system control, file management, web search, voice, macros, and Linux security checks. Just tell me naturally, e.g. \"check battery\" or \"lock screen\".",
+            f"I'm Kibo, your chat-controlled PC agent — {n} tools ready: from \"set volume to 80\" to \"describe my wifi\". Everything stays local; no cloud needed.",
+        ])
     if re.search(r"what (?:tools|can you do|commands|capabilities)|tools? ?list|list tools?|show tools?|available tools?|all tools?|^tools?$", t):
         return _tools_list()
     return ("Hello! Tell me what to do on this PC — try \"run ls -la\", "

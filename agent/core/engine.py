@@ -3,6 +3,7 @@ Needle agent initialization and engine loop.
 Supports switching between Needle and FunctionGemma.
 """
 
+import difflib
 import json
 import os
 import re
@@ -25,7 +26,34 @@ def _init_backend():
     return backend
 
 
-_backend = _init_backend()
+def _enrich_tool_docs():
+    """Append rich usage context to every tool docstring so the small model
+    routes user phrasing to the right function."""
+    for fn in ALL_TOOLS:
+        name = fn.__name__
+        words = name.replace("_", " ")
+        rest = words
+        for verb in ("get ", "set ", "take ", "make ", "do ", "check ", "show ", "list ", "open ", "run ", "read ", "write ", "play ", "send ", "lock ", "scan "):
+            if words.startswith(verb):
+                rest = words[len(verb):]
+                break
+        phrases = {words, rest, f"please {words}", f"how to {words}"}
+        if words.startswith(("get", "check", "show", "list", "read")):
+            phrases.add(f"show me the {rest}")
+            phrases.add(f"what is the {rest}")
+        if words.startswith("set"):
+            phrases.add(f"set the {rest}")
+            phrases.add(f"change the {rest}")
+        doc = (fn.__doc__ or "").strip()
+        if "Context for routing" in doc:
+            continue
+        hints = ", ".join(f'"{p}"' for p in sorted(phrases))
+        fn.__doc__ = (doc + f"\n\nContext for routing: use this tool when the user asks: {hints}.").strip()
+
+
+_enrich_tool_docs()
+
+
 _tools = {fn.__name__: fn for fn in ALL_TOOLS}
 _tool_names = list(_tools)
 
@@ -37,6 +65,9 @@ def reload_backend():
     global _backend
     _backend = _init_backend()
     return _backend
+
+
+_backend = _init_backend()
 
 
 def _agent_loop(text, max_steps=4):
@@ -55,11 +86,14 @@ def _agent_loop(text, max_steps=4):
         results = []
         for c in calls:
             name, args = c.get("name"), c.get("arguments") or {}
-            executed.append({"name": name, "arguments": args})
-            fn = _tools.get(name)
-            if fn is None:
-                results.append(f"Error: unknown tool '{name}'")
+            if name not in _tools:
+                close = difflib.get_close_matches(name or "", _tool_names, n=1, cutoff=0.72)
+                name = close[0] if close else None
+            executed.append({"name": name or c.get("name"), "arguments": args})
+            if not name:
+                results.append(f"Error: unknown tool '{c.get('name')}'")
                 continue
+            fn = _tools[name]
 
 
         
