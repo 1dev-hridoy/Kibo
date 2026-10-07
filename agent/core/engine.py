@@ -12,6 +12,7 @@ from agent.tools import ALL_TOOLS
 from agent.model_manager import create_backend, get_active_model, MODELS
 from .prompt import _strip_meta, _fallback
 from .sandbox import check_command_safety, SandboxError
+from agent.core.agent_state import update_agent_state, begin_task, begin_tool, end_tool
 
 
 def _init_backend():
@@ -42,6 +43,7 @@ def _agent_loop(text, max_steps=4):
     """Drive the engine with a hallucination guard: calls scoring below
     the confidence threshold are never executed (tiny models emit
     plausible-looking but spurious calls on small talk)."""
+    begin_task(text[:60])
     _backend.reset()
     response = _backend.complete(text)
     executed, results = [], []
@@ -69,12 +71,15 @@ def _agent_loop(text, max_steps=4):
                     continue
 
                 
+            begin_tool(name)
             try:
                 results.append(str(fn(**args)))
             except SandboxError as exc:
                 results.append(f"Sandbox: {exc}")
             except Exception as exc:
                 results.append(f"Error: {exc}")
+            finally:
+                end_tool(name)
         _backend.reset()
         response = _backend.complete(json.dumps(results))
     return response, executed, results
@@ -93,6 +98,7 @@ def _extract(response, results=None):
         text = _strip_meta("\n".join(str(r) for r in results))
     if not text:
         text = _fallback()
+    update_agent_state("idle", "")
     return text, calls
 
 

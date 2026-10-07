@@ -19,6 +19,9 @@ dependencies = [
     "pydantic>=2.0.0",
     "waitress>=3.0.0",
     "python-dotenv>=1.0.0",
+    "flask-socketio>=5.3.0",
+    "vosk>=0.3.45",
+    "Pillow>=10.0.0",
 ]
 
 [project.optional-dependencies]

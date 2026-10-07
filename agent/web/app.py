@@ -187,6 +187,16 @@ def list_models():
     return jsonify({"current": current, "models": models})
 
 
+
+from agent.core.agent_state import get_agent_state, update_agent_state
+
+
+@app.route("/api/status")
+def agent_status():
+    """Return current agent state for desktop widget."""
+    return jsonify(get_agent_state())
+
+
 @app.route("/api/history")
 def get_history():
     """Get conversation history."""

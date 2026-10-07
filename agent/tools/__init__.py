@@ -69,6 +69,7 @@ from agent.tools.voice_tools import (
     voice_start_listener, voice_stop_listener, voice_listener_status,
     voice_listen_now, voice_transcribe_only,
 )
+from agent.tools.widget_tools import widget_set_message, widget_clear
 
 ALL_TOOLS = [
     # System (10)
@@ -131,4 +132,6 @@ ALL_TOOLS = [
     # voice
     voice_start_listener, voice_stop_listener, voice_listener_status,
     voice_listen_now, voice_transcribe_only,
+    # widget
+    widget_set_message, widget_clear,
 ]
