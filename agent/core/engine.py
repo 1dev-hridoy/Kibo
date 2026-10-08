@@ -37,18 +37,12 @@ def _enrich_tool_docs():
             if words.startswith(verb):
                 rest = words[len(verb):]
                 break
-        phrases = {words, rest, f"please {words}", f"how to {words}"}
-        if words.startswith(("get", "check", "show", "list", "read")):
-            phrases.add(f"show me the {rest}")
-            phrases.add(f"what is the {rest}")
-        if words.startswith("set"):
-            phrases.add(f"set the {rest}")
-            phrases.add(f"change the {rest}")
+        phrases = {words} if words == rest else {words, rest}
         doc = (fn.__doc__ or "").strip()
         if "Context for routing" in doc:
             continue
         hints = ", ".join(f'"{p}"' for p in sorted(phrases))
-        fn.__doc__ = (doc + f"\n\nContext for routing: use this tool when the user asks: {hints}.").strip()
+        fn.__doc__ = (doc + f"\nAlso called: {hints}.").strip()
 
 
 _enrich_tool_docs()
@@ -73,6 +67,12 @@ try:
     if not os.environ.get("KIBO_NO_REMINDERS"):
         from agent.runner.reminders import ensure_jobs
         ensure_jobs()
+except Exception:
+    pass
+try:
+    if not os.environ.get("KIBO_NO_REMINDERS"):
+        from agent.tools.briefing_tools import ensure_briefing_job
+        ensure_briefing_job()
 except Exception:
     pass
 

@@ -8,7 +8,9 @@ import needle
 @needle.tool
 def autostart_enable() -> str:
     """Make Kibo start automatically when the PC boots / user logs in.
-    Use when the user asks to run Kibo on startup, on boot, or at login."""
+    ONLY use when the user explicitly asks about PC boot, startup,
+    autostart, or login. NEVER use for briefings, reminders, widgets,
+    models, or anything else."""
     from agent.runner.autostart import enable
     print("[Tool] autostart_enable()")
     return enable()

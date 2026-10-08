@@ -112,6 +112,14 @@ def _fastpath(text):
         return [("reminders_off", {})]
     if re.match(r"^reminders?(?:\s+status)?$", t):
         return [("reminders_status", {})]
+    if re.match(r"^(?:(?:brief|breaf|breif|brif)(?:\s+(?:me|today|the\s+day))?|daily\s+brief(?:ing)?|morning\s+brief(?:ing)?|today'?s\s+brief(?:ing)?|what'?s\s+(?:up|on)\s+today)$", t):
+        return [("brief_today", {})]
+    if re.match(r"^(?:turn\s+)?briefing\s+on$|^(?:enable|start)\s+(?:daily\s+)?briefing$", t):
+        return [("briefing_on", {})]
+    if re.match(r"^(?:turn\s+)?briefing\s+off$|^(?:disable|stop)\s+(?:daily\s+)?briefing$", t):
+        return [("briefing_off", {})]
+    if re.match(r"^briefing(?:\s+status)?$", t):
+        return [("briefing_status", {})]
     if re.match(r"^(?:live(?:\s+(?:screen|view))?|show\s+(?:live|my)\s+screen)$", t):
         return [("take_screenshot_now", {})]
 

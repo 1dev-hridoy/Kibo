@@ -72,6 +72,9 @@ from agent.tools.voice_tools import (
 from agent.tools.reminders_tools import (
     reminders_on, reminders_off, reminders_status,
 )
+from agent.tools.briefing_tools import (
+    brief_today, briefing_on, briefing_off, briefing_status,
+)
 from agent.tools.widget_tools import (
     widget_set_message, widget_clear,
     pet_show, pet_send, pet_love, pet_clear, pet_animate,
@@ -147,5 +150,6 @@ ALL_TOOLS = [
     pet_show, pet_send, pet_love, pet_clear, pet_animate,
     remind_water, remind_grass, remind_stretch, remind_eyes, remind_posture,
     reminders_on, reminders_off, reminders_status,
+    brief_today, briefing_on, briefing_off, briefing_status,
     autostart_enable, autostart_disable, autostart_status,
 ]
