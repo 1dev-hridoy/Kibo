@@ -29,6 +29,10 @@ class KiboWidget:
         self._setup_ui()
         self._start_poller()
         self.avatar.wave()
+        self._model_name = ""
+        self._loading_token = 0
+        self._set_expanded(True, compact=True)
+        self.status_label.config(text="Loading model…")
 
     def _setup_window(self):
         self.root = tk.Tk()
@@ -51,30 +55,9 @@ class KiboWidget:
 
         self.root.bind("<Button-3>", self._show_menu)
         self.root.bind("<Double-Button-1>", lambda e: self._open_web_ui())
-        self.root.bind("<Button-1>", self._start_drag)
+        from agent.desktop_widget.pointer import start_drag
+        self.root.bind("<Button-1>", lambda e: start_drag(self, e))
         self.root.bind("<B1-Motion>", self._do_drag)
-
-    def _pet_at(self, event):
-        try:
-            return self.avatar.hover_at(event.x, event.y)
-        except Exception:
-            return False
-
-    def _start_drag(self, event):
-        if self._pet_at(event):
-            self.avatar.click_at(event.x, event.y)
-            self._drag_x = None
-            self._drag_y = None
-            return
-        self._drag_x = event.x
-        self._drag_y = event.y
-
-    def _on_motion(self, event):
-        if self._pet_at(event):
-            return
-        if self._last_seen_state == "idle":
-            self._peek_until = time.time() + 2.5
-            self.status_label.set_animated("hi!")
 
     def _do_drag(self, event):
         if self._drag_x is None:
@@ -83,17 +66,6 @@ class KiboWidget:
         y = self.root.winfo_y() + event.y - self._drag_y
         self.root.geometry(f"+{x}+{y}")
         self._last_drag = time.time()
-
-    def _recenter(self):
-        if time.time() - getattr(self, "_last_drag", 0) < 5:
-            return
-        sw = self.root.winfo_screenwidth()
-        w = self.root.winfo_width()
-        if w < 10:
-            return
-        cx = (sw - w) // 2
-        if abs(self.root.winfo_x() - cx) > 2:
-            self.root.geometry(f"+{cx}+{self.cfg.get('y', 0)}")
 
     def _setup_ui(self):
         bg = self.cfg["bg_color"]
@@ -107,8 +79,9 @@ class KiboWidget:
         self.avatar = MochiAvatar(self.root, size=avatar_size,
                                   base_bg=bg)
         self.frame.pet = self.avatar
-        self.frame.bind("<Motion>", self._on_motion)
-        self.frame.bind("<Leave>", lambda e: self.avatar.hover_at(-1, -1))
+        from agent.desktop_widget.pointer import on_motion, on_leave
+        self.frame.bind("<Motion>", lambda e: on_motion(self, e))
+        self.frame.bind("<Leave>", lambda e: on_leave(self, e))
 
         self.status_label = CanvasText(self.root, self.frame, 0, fg,
                                        ("Segoe UI", fs + 1, "bold"), 0.38)
@@ -139,8 +112,8 @@ class KiboWidget:
             self.task_label.hide()
             self.tool_label.hide()
             self.model_label.hide()
-        x = (self.root.winfo_screenwidth() - w) // 2
-        self.root.geometry(f"{w}x{h}+{x}+{self.cfg.get('y', 0)}")
+        from agent.desktop_widget.window_fx import animate_width
+        animate_width(self, w)
 
     def _start_poller(self):
         def poll():
@@ -153,6 +126,18 @@ class KiboWidget:
         model_info = self.api.get_model()
         if "active" in model_info:
             name = model_info.get("name", model_info["active"])
+            if name != self._model_name:
+                first = not self._model_name
+                self._model_name = name
+                if first:
+                    self.avatar.loading = False
+                else:
+                    self.avatar.loading = True
+                    self.root.after(0, lambda n=name: self.status_label.config(
+                        text=f"Loading {n}…"))
+                    self._loading_token += 1
+                    tok = self._loading_token
+                    self.root.after(30000, lambda: self._loading_done(tok))
             self.root.after(0, lambda n=name: self.model_label.config(
                 text=f" {n} "))
         status = self.api.get_status()
@@ -180,7 +165,8 @@ class KiboWidget:
         self.root.after(0, lambda: self._apply_status(status))
 
     def _apply_status(self, status):
-        self._recenter()
+        from agent.desktop_widget.window_fx import recenter
+        recenter(self)
         state = status.get("state", "idle")
         task = status.get("current_task", "")
         tool = status.get("current_tool", "")
@@ -218,15 +204,16 @@ class KiboWidget:
            self._last_state in ("working", "custom"):
             self.avatar.celebrate()
 
-        self._set_expanded(True, compact=(state == "idle"))
+        is_active = state != "idle" or bool(custom) or recently_active \
+            or time.time() < self._peek_until
+        self._set_expanded(is_active, compact=(state == "idle"))
 
         if state == "idle" and not custom and not recently_active:
             self.avatar.set_state("sleepy" if self._idle_seconds > 20 else "idle")
             self._shown_custom = ""
-            if time.time() >= self._peek_until:
-                self.status_label.config(
-                    text=time.strftime("%H:%M"))
-                self.task_label.config(text=self._sys_info())
+            if time.time() >= self._peek_until and not self.avatar.loading:
+                self.status_label.hide()
+                self.task_label.hide()
                 self.tool_label.hide()
             else:
                 self._schedule_collapse(
@@ -304,37 +291,12 @@ class KiboWidget:
         self._last_seen_state = state
 
     def _sys_info(self):
-        try:
+        from agent.desktop_widget.sys_info import sys_info
+        return sys_info()
 
-
-            import shutil
-            free = shutil.disk_usage("/").free // (1024 ** 3)
-            parts = [f"{free}G free"]
-        except Exception:
-            parts = []
-        
-        
-        try:
-            import glob
-            bats = glob.glob("/sys/class/power_supply/BAT*/capacity")
-            if bats:
-                with open(bats[0]) as f:
-                    parts.append(f"{f.read().strip()}%")
-        
-        except Exception:
-            pass
-        
-        
-        try:
-            with open("/proc/loadavg") as f:
-                load = float(f.read().split()[0])
-            import os
-            cores = os.cpu_count() or 1
-        
-            parts.append(f"cpu {int(load / cores * 100)}%")
-        except Exception:
-            pass
-        return " · ".join(parts) if parts else "idle"
+    def _loading_done(self, tok):
+        if tok == self._loading_token:
+            self.avatar.loading = False
 
     def _cancel_collapse(self):
         if self._collapse_after:
@@ -353,7 +315,7 @@ class KiboWidget:
         self.status_label.hide()
         self.task_label.hide()
         self.tool_label.hide()
-        self._set_expanded(True, compact=True)
+        self._set_expanded(False)
 
     def _expire_custom(self, msg=None):
         if msg is not None and msg != getattr(self, "_shown_custom", ""):

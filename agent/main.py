@@ -132,6 +132,7 @@ def main():
     _maybe_prompt_autostart()
 
     if mode == "web":
+        _maybe_start_widget(args)
         from agent.web import start_web
         port = int(args[1]) if len(args) > 1 and args[1].isdigit() else WEB_PORT
         if "--telegram" in args:
@@ -140,40 +141,6 @@ def main():
             if token:
                 from agent.telegram import start_telegram
                 start_telegram(token)
-
-
-
-       
-        if "--no-widget" not in args:
-            try:
-                import tkinter  
-                import threading
-                from agent.web.app import app, socketio
-                from agent.config import WEB_HOST, WEB_SSL, SSL_CERT, SSL_KEY
-                import os
-
-
-             
-                def _run_web():
-                    ssl_context = None
-                    if WEB_SSL and os.path.exists(SSL_CERT) and os.path.exists(SSL_KEY):
-                        ssl_context = (SSL_CERT, SSL_KEY)
-                    print(f"Kibo Web UI: http{'s' if ssl_context else ''}://{WEB_HOST}:{port}")
-                    socketio.run(app, host=WEB_HOST, port=port, debug=False,
-                                 allow_unsafe_werkzeug=True, ssl_context=ssl_context)
-
-                web_thread = threading.Thread(target=_run_web, daemon=True)
-                web_thread.start()
-
-
-               
-                from agent.desktop_widget import KiboWidget
-                KiboWidget().run()
-                return
-            except ImportError:
-                pass
-            except Exception as e:
-                print(f"[Widget] Could not start desktop widget: {e}")
 
         start_web(port=port)
 

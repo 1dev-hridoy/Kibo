@@ -120,6 +120,7 @@ class MochiAvatar:
         self._clicks = []
         self._showcase = []
         self._idle_anim_in = 300
+        self.loading = True
         self.colors = {
             "idle":     "#a6e3a1",
             "working":  "#f9e2af",
@@ -456,3 +457,14 @@ class MochiAvatar:
             draw_mochi(view)
         from agent.desktop_widget.pet_anim import draw_fx
         draw_fx(view)
+        if self.loading:
+            rr = s // 2 + 12
+            for i in range(8):
+                ang = self._frame * 0.15 + i * math.pi / 4
+                lit = (i + self._frame // 5) % 8 < 3
+                dx = math.cos(ang) * rr
+                dy = math.sin(ang) * rr * 0.9
+                view.create_oval(s // 2 + dx - 2.5, s // 2 + dy - 2.5,
+                                 s // 2 + dx + 2.5, s // 2 + dy + 2.5,
+                                 fill="#89dceb" if lit else "#313244",
+                                 outline="")
