@@ -39,7 +39,7 @@ def verify_password(password):
     """Verify a password against the stored hash."""
     config = _load_auth()
     if not config:
-        # No custom password set, use default
+    
         return password == DEFAULT_PASSWORD
     hashed = hashlib.pbkdf2_hmac(
         "sha256", password.encode(), config["salt"].encode(), 100000
@@ -51,17 +51,17 @@ def generate_token():
     """Generate a session token (valid for 24 hours)."""
     global _token, _token_expiry
     _token = secrets.token_urlsafe(32)
-    _token_expiry = time.time() + 86400  # 24 hours
+    _token_expiry = time.time() + 86400  
     return _token
 
 
 def verify_token(token):
     """Verify a session token."""
-    if not _token or not _token_expiry:
+    if not token or not _token or not _token_expiry:
         return False
     if time.time() > _token_expiry:
         return False
-    return secrets.compare_digest(token, _token)
+    return secrets.compare_digest(str(token), str(_token))
 
 
 def is_auth_required():

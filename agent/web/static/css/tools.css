@@ -1,0 +1,17 @@
+.tool-table td,
+.tool-table th {
+  vertical-align: middle;
+}
+.tool-pill {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.8rem;
+  background: #f1f5f9;
+  border: 1px solid var(--kb-border);
+  padding: 0.15rem 0.5rem;
+  border-radius: 6px;
+}
+.tool-group {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}

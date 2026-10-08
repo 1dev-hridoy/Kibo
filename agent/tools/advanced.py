@@ -591,6 +591,12 @@ def voice_speak(text: str, speed: int = 100) -> str:
     print(f"[Tool] voice_speak('{text[:50]}...', speed={speed})")
 
     speed = min(max(int(speed), 50), 200)
+    try:
+        from agent.core.agent_state import set_pet_action
+        frames = max(40, min(400, int(len(text or "") * 1.4 * 100 / speed)))
+        set_pet_action(f"talk {frames}")
+    except Exception:
+        pass
 
     # Try espeak-ng / espeak
     espeak = shutil.which("espeak-ng") or shutil.which("espeak")

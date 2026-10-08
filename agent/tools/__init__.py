@@ -65,6 +65,24 @@ from agent.tools.tools_crypto import (
     generate_file_checksum, hash_text, identify_hash_algorithm,
     decode_jwt_token, analyze_pcap_file, analyze_apk_permissions, search_content,
 )
+from agent.tools.voice_tools import (
+    voice_start_listener, voice_stop_listener, voice_listener_status,
+    voice_listen_now, voice_transcribe_only,
+)
+from agent.tools.reminders_tools import (
+    reminders_on, reminders_off, reminders_status,
+)
+from agent.tools.briefing_tools import (
+    brief_today, briefing_on, briefing_off, briefing_status,
+)
+from agent.tools.widget_tools import (
+    widget_set_message, widget_clear,
+    pet_show, pet_send, pet_love, pet_clear, pet_animate,
+    remind_water, remind_grass, remind_stretch, remind_eyes, remind_posture,
+)
+from agent.tools.autostart_tools import (
+    autostart_enable, autostart_disable, autostart_status,
+)
 
 ALL_TOOLS = [
     # System (10)
@@ -124,4 +142,14 @@ ALL_TOOLS = [
     generate_file_checksum, hash_text, identify_hash_algorithm,
     decode_jwt_token, analyze_pcap_file, analyze_apk_permissions,
     search_content,
+    # voice
+    voice_start_listener, voice_stop_listener, voice_listener_status,
+    voice_listen_now, voice_transcribe_only,
+    # widget
+    widget_set_message, widget_clear,
+    pet_show, pet_send, pet_love, pet_clear, pet_animate,
+    remind_water, remind_grass, remind_stretch, remind_eyes, remind_posture,
+    reminders_on, reminders_off, reminders_status,
+    brief_today, briefing_on, briefing_off, briefing_status,
+    autostart_enable, autostart_disable, autostart_status,
 ]

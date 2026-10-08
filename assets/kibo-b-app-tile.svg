@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-labelledby="t">
+  <title id="t">Kibo concept B — squircle app tile</title>
+  <defs>
+    <linearGradient id="oL" gradientUnits="userSpaceOnUse" x1="66" y1="124" x2="86" y2="30">
+      <stop offset="0" stop-color="#8ed08a"/><stop offset="1" stop-color="#c3efbf"/>
+    </linearGradient>
+    <linearGradient id="oR" gradientUnits="userSpaceOnUse" x1="214" y1="124" x2="194" y2="30">
+      <stop offset="0" stop-color="#8ed08a"/><stop offset="1" stop-color="#c3efbf"/>
+    </linearGradient>
+    <linearGradient id="tile" gradientUnits="userSpaceOnUse" x1="0" y1="62" x2="0" y2="214">
+      <stop offset="0" stop-color="#b6ecb2"/><stop offset="1" stop-color="#93d98f"/>
+    </linearGradient>
+    <linearGradient id="sh" gradientUnits="userSpaceOnUse" x1="0" y1="216" x2="0" y2="242">
+      <stop offset="0" stop-color="#2b2438" stop-opacity="0.26"/>
+      <stop offset="1" stop-color="#2b2438" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+
+  <g transform="translate(-12,-5)">
+
+  <ellipse cx="140" cy="230" rx="72" ry="12" fill="url(#sh)"/>
+
+  <g id="ears">
+    <polygon points="64,118 72,24 104,62" fill="url(#oL)"/>
+    <polygon points="216,118 208,24 176,62" fill="url(#oR)"/>
+    <polygon points="72,93 76,46 92,65" fill="#f5a3b5"/>
+    <polygon points="208,93 204,46 188,65" fill="#f5a3b5"/>
+  </g>
+
+  <rect x="64" y="62" width="152" height="152" rx="46" fill="url(#tile)"/>
+
+  <g id="eyes" fill="#2b2438">
+    <ellipse cx="101" cy="136" rx="25" ry="27.6"/>
+    <ellipse cx="179" cy="136" rx="25" ry="27.6"/>
+    <circle cx="90.4" cy="120" r="7" fill="#ffffff"/>
+    <circle cx="168.4" cy="120" r="7" fill="#ffffff"/>
+    <circle cx="110.7" cy="149.5" r="3.5" fill="#ffffff"/>
+    <circle cx="188.7" cy="149.5" r="3.5" fill="#ffffff"/>
+    <polygon points="131.5,170.4 148.5,170.4 140,183.2" fill="#ff8fab"/>
+  </g>
+
+  <g id="blush" fill="#ff8fab" opacity="0.7">
+    <ellipse cx="92" cy="176" rx="13" ry="7"/>
+    <ellipse cx="188" cy="176" rx="13" ry="7"/>
+  </g>
+
+  <g id="mouth" fill="none" stroke="#2b2438" stroke-width="7.5" stroke-linecap="round">
+    <path d="M112,196 A17,17 0 0 0 140,193"/>
+    <path d="M140,193 A17,17 0 0 0 168,196"/>
+  </g>
+
+  <path d="M110.2,95.4 A52,52 0 0 0 92.9,116" fill="none" stroke="#ffffff" stroke-opacity="0.34" stroke-width="7" stroke-linecap="round"/>
+  </g>
+</svg>

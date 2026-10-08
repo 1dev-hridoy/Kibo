@@ -130,6 +130,11 @@ get_kibo() {
 
     INSTALL_DIR="${KIBO_DIR:-$HOME/kibo}"
 
+    if [ -f "./pyproject.toml" ] && grep -q 'name = "kibo"' ./pyproject.toml 2>/dev/null; then
+        INSTALL_DIR="$(pwd)"
+        ok "Using current checkout: ${INSTALL_DIR}"
+    fi
+
     if [ -d "$INSTALL_DIR" ]; then
         ok "Found existing installation: ${INSTALL_DIR}"
         cd "$INSTALL_DIR"
@@ -202,7 +207,7 @@ install_helpers() {
         pacman)
             info "Installing via pacman..."
             sudo pacman -S --needed --noconfirm \
-                libnotify brightnessctl wl-clipboard xclip espeak-ng scrot xdotool wmctrl 2>/dev/null \
+                libnotify brightnessctl wl-clipboard xclip espeak-ng scrot xdotool wmctrl python-tk python-pillow pulseaudio 2>/dev/null \
                 && ok "Helpers installed (libnotify, brightnessctl, wl-clipboard, xclip, espeak-ng, scrot, xdotool, wmctrl)" \
                 || warn "Some helpers failed (optional features may be limited)"
             ;;
@@ -210,21 +215,21 @@ install_helpers() {
             info "Installing via apt..."
             sudo apt-get update -qq >/dev/null 2>&1 || true
             sudo apt-get install -y -qq \
-                libnotify-bin brightnessctl wl-clipboard xclip espeak-ng scrot xdotool wmctrl 2>/dev/null \
+                libnotify-bin brightnessctl wl-clipboard xclip espeak-ng scrot xdotool wmctrl python3-tk python3-venv pulseaudio-utils 2>/dev/null \
                 && ok "Helpers installed" \
                 || warn "Some helpers failed (optional features may be limited)"
             ;;
         dnf)
             info "Installing via dnf..."
             sudo dnf install -y -q \
-                libnotify brightnessctl wl-clipboard xclip espeak-ng scrot xdotool wmctrl 2>/dev/null \
+                libnotify brightnessctl wl-clipboard xclip espeak-ng scrot xdotool wmctrl python3-tkinter pulseaudio-utils 2>/dev/null \
                 && ok "Helpers installed" \
                 || warn "Some helpers failed (optional features may be limited)"
             ;;
         zypper)
             info "Installing via zypper..."
             sudo zypper --non-interactive install -q \
-                libnotify-tools brightnessctl wl-clipboard xclip espeak-ng scrot xdotool wmctrl 2>/dev/null \
+                libnotify-tools brightnessctl wl-clipboard xclip espeak-ng scrot xdotool wmctrl python3-tk pulseaudio-utils 2>/dev/null \
                 && ok "Helpers installed" \
                 || warn "Some helpers failed (optional features may be limited)"
             ;;

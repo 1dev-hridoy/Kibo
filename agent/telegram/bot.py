@@ -14,6 +14,18 @@ from agent.logs import user_input, ai_response, error, startup, info
 PID_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".telegram_bot.pid")
 
 
+def _guard(bot, chat_id):
+    """Block unauthorized chats from sending commands."""
+    from agent.telegram.auth import is_allowed
+    if is_allowed(chat_id):
+        return True
+    try:
+        bot.send_message(chat_id, "🚫 Access denied. This bot is private.")
+    except Exception:
+        pass
+    return False
+
+
 def _acquire_lock():
     """Kill any existing bot instance and claim the PID file."""
     if os.path.exists(PID_FILE):
@@ -49,12 +61,12 @@ def _build_main_keyboard():
     from telebot import types
     keyboard = types.InlineKeyboardMarkup(row_width=2)
 
-    # Row 1: System
+
     keyboard.row(
         types.InlineKeyboardButton("🔋 Battery", callback_data="cmd_battery"),
         types.InlineKeyboardButton("📶 WiFi", callback_data="cmd_wifi"),
     )
-    # Row 2: Volume & Brightness
+    
     keyboard.row(
         types.InlineKeyboardButton("🔊 Volume Up", callback_data="cmd_vol_up"),
         types.InlineKeyboardButton("🔉 Volume Down", callback_data="cmd_vol_down"),
@@ -63,32 +75,43 @@ def _build_main_keyboard():
         types.InlineKeyboardButton("🔆 Bright+", callback_data="cmd_bright_up"),
         types.InlineKeyboardButton("🔅 Bright-", callback_data="cmd_bright_down"),
     )
-    # Row 3: Screenshots & Media
+
+
+
     keyboard.row(
         types.InlineKeyboardButton("📸 Screenshot", callback_data="cmd_screenshot"),
         types.InlineKeyboardButton("📷 Webcam", callback_data="cmd_webcam"),
     )
-    # Row 4: System Info
+
+
     keyboard.row(
         types.InlineKeyboardButton("💻 PC Info", callback_data="cmd_pc_info"),
         types.InlineKeyboardButton("📊 CPU/RAM", callback_data="cmd_stats"),
     )
-    # Row 5: Processes
+
+
     keyboard.row(
         types.InlineKeyboardButton("⚙️ Processes", callback_data="cmd_processes"),
         types.InlineKeyboardButton("🌡️ Temperature", callback_data="cmd_temp"),
     )
-    # Row 6: Files & Apps
+
+
+
+
     keyboard.row(
         types.InlineKeyboardButton("📁 Files", callback_data="cmd_files"),
         types.InlineKeyboardButton("📱 Apps", callback_data="cmd_apps"),
     )
-    # Row 7: Actions
+
+
+
     keyboard.row(
         types.InlineKeyboardButton("🔒 Lock", callback_data="cmd_lock"),
         types.InlineKeyboardButton("🔊 Mute", callback_data="cmd_mute"),
     )
-    # Row 8: Model & Help
+
+
+
     keyboard.row(
         types.InlineKeyboardButton("🤖 Model", callback_data="cmd_model"),
         types.InlineKeyboardButton("❓ Help", callback_data="cmd_help"),
@@ -116,10 +139,13 @@ def _handle_callback(bot, call):
     data = call.data
     chat_id = call.message.chat.id
 
-    # Show typing indicator
+    if not _guard(bot, chat_id):
+        return
+
+
     bot.send_chat_action(chat_id, "typing")
 
-    # Route callback to command
+
     command_map = {
         "cmd_battery": "battery status",
         "cmd_wifi": "wifi info",
@@ -144,9 +170,15 @@ def _handle_callback(bot, call):
     if data == "switch_needle":
         from agent.model_manager import switch_model
         from agent.core.engine import reload_backend
+        bot.answer_callback_query(call.id)
+        bot.edit_message_text("Switching AI model, loading...",
+                              chat_id, call.message.message_id)
         success, msg = switch_model("needle")
         if success:
             reload_backend()
+            from agent.model_manager import get_active_model as _am
+            if _am() != "needle":
+                msg += "\nNote: backend could not load, still on previous model."
         bot.answer_callback_query(call.id, "Switched to Needle")
         bot.edit_message_text(msg, chat_id, call.message.message_id)
         return
@@ -154,9 +186,15 @@ def _handle_callback(bot, call):
     if data == "switch_functiongemma":
         from agent.model_manager import switch_model
         from agent.core.engine import reload_backend
+        bot.answer_callback_query(call.id)
+        bot.edit_message_text("Switching AI model, loading...",
+                              chat_id, call.message.message_id)
         success, msg = switch_model("functiongemma")
         if success:
             reload_backend()
+            from agent.model_manager import get_active_model as _am2
+            if _am2() != "functiongemma":
+                msg += "\nNote: backend could not load, still on previous model."
         bot.answer_callback_query(call.id, "Switched to FunctionGemma")
         bot.edit_message_text(msg, chat_id, call.message.message_id)
         return
@@ -197,7 +235,8 @@ def _handle_callback(bot, call):
             media = result.get("media")
             tool_calls = result.get("tool_calls", [])
 
-            # Format tool calls
+
+     
             tools_text = ""
             if tool_calls:
                 tools_text = "\n\n<i>Tools: " + ", ".join(
@@ -271,14 +310,20 @@ def start_telegram(token: str):
     bot = telebot.TeleBot(token, parse_mode="HTML")
     startup("Telegram", "Bot active — listening for messages")
 
-    # ── Command handlers ─────────────────────────────────────────────
+
+
+
     @bot.message_handler(commands=["start", "help"])
     def send_welcome(message):
+        if not _guard(bot, message.chat.id):
+            return
         user_input("telegram", "/start")
         bot.reply_to(message, _get_help_text(), reply_markup=_build_main_keyboard())
 
     @bot.message_handler(commands=["screenshot", "ss"])
     def cmd_screenshot(message):
+        if not _guard(bot, message.chat.id):
+            return
         user_input("telegram", "/screenshot")
         bot.send_chat_action(message.chat.id, "upload_photo")
         try:
@@ -359,6 +404,8 @@ def start_telegram(token: str):
 
     @bot.message_handler(commands=["model"])
     def cmd_model(message):
+        if not _guard(bot, message.chat.id):
+            return
         from agent.model_manager import get_active_model, MODELS
         current = get_active_model()
         info = MODELS.get(current, {})
@@ -389,6 +436,30 @@ def start_telegram(token: str):
         else:
             bot.reply_to(message, "Usage: /run <command>")
 
+    @bot.message_handler(commands=["chatid", "id"])
+    def cmd_chatid(message):
+        cid = message.chat.id
+        kind = message.chat.type
+        bot.reply_to(message,
+            f"Chat ID: <code>{cid}</code>\nType: {kind}\n"
+            f"Add it with <code>/allow {cid}</code> (owner only) or "
+            f"AGENT_TELEGRAM_ALLOWED_CHATS.")
+
+    @bot.message_handler(commands=["allow", "unlock"])
+    def cmd_allow(message):
+        if not _guard(bot, message.chat.id):
+            return
+        from agent.telegram.auth import owner_ids, add_allowed
+        if message.chat.id not in owner_ids():
+            bot.reply_to(message, "Only the owner chat can add chats.")
+            return
+        args = message.text.split(maxsplit=1)
+        if len(args) < 2 or not args[1].strip().lstrip("-").isdigit():
+            bot.reply_to(message, "Usage: /allow <chat_id>")
+            return
+        ids = add_allowed(int(args[1].strip()))
+        bot.reply_to(message, f"Allowed chats: {', '.join(map(str, ids))}")
+
     @bot.message_handler(commands=["open"])
     def cmd_open(message):
         args = message.text.split(maxsplit=1)
@@ -397,22 +468,39 @@ def start_telegram(token: str):
         else:
             bot.reply_to(message, "Usage: /open <app>")
 
-    # ── Callback query handler ───────────────────────────────────────
+
+
+
     @bot.callback_query_handler(func=lambda call: True)
     def handle_callback(call):
         _handle_callback(bot, call)
 
-    # ── Default message handler ──────────────────────────────────────
+
+
     @bot.message_handler(func=lambda m: True)
     def handle(message):
         user_text = message.text.strip()
         if not user_text:
             return
+        if not _guard(bot, message.chat.id):
+            return
 
         user_input("telegram", user_text)
 
-        # Show typing indicator
+
+
+  
         bot.send_chat_action(message.chat.id, "typing")
+
+       
+       
+        import re as _re2
+        loading_msg = None
+        if _re2.match(r"^(?:switch|change|use)\s+", user_text.strip().lower()):
+            try:
+                loading_msg = bot.reply_to(message, "Switching AI model, loading...")
+            except Exception:
+                loading_msg = None
 
         try:
             result = ask(user_text)
@@ -420,7 +508,10 @@ def start_telegram(token: str):
             media = result.get("media")
             tool_calls = result.get("tool_calls", [])
 
-            # Format tool calls
+
+
+
+
             tools_text = ""
             if tool_calls:
                 tools_text = "\n\n<i>Tools: " + ", ".join(
@@ -442,11 +533,24 @@ def start_telegram(token: str):
 
             if text:
                 full_text = text + tools_text
-                if len(full_text) > 4000:
+                if loading_msg is not None:
+                    try:
+                        bot.edit_message_text(full_text, message.chat.id,
+                                              loading_msg.message_id,
+                                              parse_mode="HTML")
+                    except Exception:
+                        bot.reply_to(message, full_text, parse_mode="HTML")
+                elif len(full_text) > 4000:
                     for i in range(0, len(full_text), 4000):
                         bot.reply_to(message, full_text[i:i+4000], parse_mode="HTML")
                 else:
                     bot.reply_to(message, full_text, parse_mode="HTML")
+            elif loading_msg is not None:
+                try:
+                    bot.edit_message_text("Done.", message.chat.id,
+                                          loading_msg.message_id)
+                except Exception:
+                    bot.reply_to(message, "Done.")
             else:
                 bot.reply_to(message, "Done.")
 
@@ -470,6 +574,8 @@ def start_telegram(token: str):
 
 def _run_command(bot, message, command):
     """Run a command with typing indicator."""
+    if not _guard(bot, message.chat.id):
+        return
     bot.send_chat_action(message.chat.id, "typing")
     user_input("telegram", command)
     try:
@@ -478,7 +584,8 @@ def _run_command(bot, message, command):
         media = result.get("media")
         tool_calls = result.get("tool_calls", [])
 
-        # Format tool calls
+
+     
         tools_text = ""
         if tool_calls:
             tools_text = "\n\n<i>Tools: " + ", ".join(

@@ -165,8 +165,7 @@ def switch_model(name):
 
     set_active_model(name)
     return True, (
-        f"Switched from {MODELS[old_model]['name']} to {MODELS[name]['name']}.\n"
-        f"Restart required: type 'switch {name}' again or restart the bot."
+        f"Switched from {MODELS[old_model]['name']} to {MODELS[name]['name']}."
     )
 
 
@@ -331,5 +330,10 @@ def create_backend(tools):
     """Create the appropriate backend based on active model."""
     model = get_active_model()
     if model == "functiongemma":
-        return FunctionGemmaBackend(tools)
+        try:
+            return FunctionGemmaBackend(tools)
+        except ImportError:
+            print("[Model] FunctionGemma unavailable (llama-cpp-python missing), falling back to Needle")
+            set_active_model("needle")
+            return NeedleBackend(tools)
     return NeedleBackend(tools)

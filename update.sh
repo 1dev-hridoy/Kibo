@@ -41,27 +41,34 @@ step "2/4" "Checking for updates"
 line
 
 CURRENT=$("$VENV/bin/python" -c "import agent; print(agent.__version__)" 2>/dev/null || echo "0.0.0")
-ok "Current version: $CURRENT"
+ok "Current version: v$CURRENT"
 
 info "Fetching latest from GitHub..."
-git fetch --quiet origin main 2>/dev/null || fail "Could not reach GitHub. Check your internet."
+git fetch --quiet --tags origin main 2>/dev/null || warn "Could not fetch from GitHub — using local version only"
 
-REMOTE=$(git log origin/main -1 --format="%H" 2>/dev/null)
-LOCAL=$(git rev-parse HEAD 2>/dev/null)
+if git rev-parse --verify origin/main >/dev/null 2>&1; then
+    REMOTE_VERSION=$(git show origin/main:agent/__init__.py 2>/dev/null \
+        | grep -oE '__version__\s*=\s*"[^"]+"' \
+        | grep -oE '"[^"]+"' | tr -d '"' || true)
+    [ -z "$REMOTE_VERSION" ] && REMOTE_VERSION="unknown"
+else
+    REMOTE_VERSION="$CURRENT"
+fi
 
-if [ "$REMOTE" = "$LOCAL" ]; then
+REMOTE=$(git log origin/main -1 --format="%H" 2>/dev/null || echo "")
+LOCAL=$(git rev-parse HEAD 2>/dev/null || echo "")
+
+if [ -z "$REMOTE" ]; then
+    warn "No origin/main found (not a git checkout?) — reinstall to change versions"
+    printf "\n  ${DIM}Current: v%s${NC}\n\n" "$CURRENT"
+    exit 0
+fi
+
+if [ "$REMOTE_VERSION" = "$CURRENT" ] && [ "$REMOTE" = "$LOCAL" ]; then
     ok "Already up to date (v$CURRENT)"
     printf "\n  ${GREEN}No updates available.${NC}\n\n"
     exit 0
 fi
-
-# Get remote version
-REMOTE_VERSION=$("$VENV/bin/python" -c "
-import subprocess, re
-out = subprocess.check_output(['git', 'show', 'origin/main:agent/__init__.py'], text=True)
-m = re.search(r'__version__\s*=\s*\"(.+?)\"', out)
-print(m.group(1) if m else 'unknown')
-" 2>/dev/null || echo "unknown")
 
 printf "\n"
 printf "  ${BOLD}┌─────────────────────────────────────────┐${NC}\n"
@@ -69,7 +76,11 @@ printf "  ${BOLD}│${NC}  ${WHITE}Update available!${NC}                       
 printf "  ${BOLD}├─────────────────────────────────────────┤${NC}\n"
 printf "  ${BOLD}│${NC}                                         ${BOLD}│${NC}\n"
 printf "  ${BOLD}│${NC}  ${DIM}Current:${NC}  ${YELLOW}v%-28s${NC} ${BOLD}│${NC}\n" "$CURRENT"
-printf "  ${BOLD}│${NC}  ${DIM}Latest:${NC}   ${GREEN}v%-28s${NC} ${BOLD}│${NC}\n" "$REMOTE_VERSION"
+if [ "$REMOTE_VERSION" != "$CURRENT" ]; then
+    printf "  ${BOLD}│${NC}  ${DIM}Latest:${NC}   ${GREEN}v%-28s${NC} ${BOLD}│${NC}\n" "$REMOTE_VERSION"
+else
+    printf "  ${BOLD}│${NC}  ${DIM}Latest:${NC}   ${GREEN}v%-28s${NC} ${BOLD}│${NC}\n" "$CURRENT"
+fi
 printf "  ${BOLD}│${NC}                                         ${BOLD}│${NC}\n"
 printf "  ${BOLD}└─────────────────────────────────────────┘${NC}\n"
 printf "\n"

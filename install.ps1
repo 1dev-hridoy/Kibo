@@ -12,7 +12,7 @@ Write-Host "  KIBO - INSTALLER (Windows)" -ForegroundColor Cyan
 Write-Host "  ----------------------------"
 Write-Host ""
 
-# ---- [1/4] Python ----
+
 Write-Host "[1/4] Checking Python 3.9+..."
 $py = $null
 foreach ($cand in @("py -3", "python3", "python")) {
@@ -28,7 +28,7 @@ if (-not $py) {
 }
 Write-Host "  OK using: $py ($v)"
 
-# ---- [2/4] venv ----
+
 Write-Host "[2/4] Creating virtual environment..."
 $VEnv = Join-Path $Dir ".venv"
 $VEnvPy = Join-Path $VEnv "Scripts\python.exe"
@@ -39,14 +39,23 @@ if (-not (Test-Path $VEnvPy)) {
     Write-Host "  OK reusing existing venv"
 }
 
-# ---- [3/4] dependencies ----
+
 Write-Host "[3/4] Installing dependencies..."
 & $VEnvPy -m pip install --quiet --upgrade pip
 & $VEnvPy -m pip install --quiet -e .
 if ($LASTEXITCODE -ne 0) { Write-Host "  X pip install failed" -ForegroundColor Red; exit 1 }
 Write-Host "  OK kibo package registered (editable)"
 
-# ---- [4/4] verify ----
+
+Write-Host "[3.5/4] Checking desktop widget support (tkinter)..."
+& $VEnvPy -c "import tkinter" 2>$null
+if ($LASTEXITCODE -eq 0) {
+    Write-Host "  OK tkinter available"
+} else {
+    Write-Host "  ! tkinter missing - reinstall Python with 'tcl/tk' ticked for the widget" -ForegroundColor Yellow
+}
+
+
 Write-Host "[4/4] Verifying..."
 $ToolCount = & $VEnvPy -c "from agent.tools import ALL_TOOLS; print(len(ALL_TOOLS))"
 if ($LASTEXITCODE -ne 0) { Write-Host "  X agent import failed" -ForegroundColor Red; exit 1 }
