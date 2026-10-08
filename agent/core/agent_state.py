@@ -14,6 +14,7 @@ _agent_state = {
     "history": [],             
     "custom_message": "",      
     "custom_animation": "fade",
+    "custom_expires_in": 0,
     "pet_action": "",
     "pet_seq": 0,
     "_idle_since": 0.0,        
@@ -24,10 +25,12 @@ def get_agent_state():
     return _agent_state
 
 
-def set_widget_message(message: str, animation: str = "fade"):
+def set_widget_message(message: str, animation: str = "fade",
+                         expires_in: int = 0):
     """Set a custom message shown in the desktop widget."""
     _agent_state["custom_message"] = message[:80]
     _agent_state["custom_animation"] = animation or "fade"
+    _agent_state["custom_expires_in"] = expires_in or 0
     try:
         import json as _json
         import os as _os
@@ -36,7 +39,8 @@ def set_widget_message(message: str, animation: str = "fade"):
         tmp = path + ".tmp"
         with open(tmp, "w") as f:
             _json.dump({"message": message[:80],
-                        "animation": animation or "fade"}, f)
+                        "animation": animation or "fade",
+                        "expires_in": expires_in or 0}, f)
         _os.replace(tmp, path)
     except OSError:
         pass
@@ -49,14 +53,16 @@ def read_pet_message_file():
         path = _os.path.expanduser("~/.config/kibo/pet_message.json")
         with open(path) as f:
             data = _json.load(f)
-        return data.get("message", ""), data.get("animation", "fade")
+        return (data.get("message", ""), data.get("animation", "fade"),
+                int(data.get("expires_in", 0) or 0))
     except (OSError, ValueError, AttributeError):
-        return "", "fade"
+        return "", "fade", 0
 
 
 def clear_widget_message():
     _agent_state["custom_message"] = ""
     _agent_state["custom_animation"] = "fade"
+    _agent_state["custom_expires_in"] = 0
     try:
         import os as _os
         path = _os.path.expanduser("~/.config/kibo/pet_message.json")

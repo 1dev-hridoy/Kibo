@@ -91,7 +91,8 @@ def pet_animate(action: str) -> str:
     Actions: celebrate, dance, party, love, hearts, happy, sleepy,
     yawn, working, busy, pixel, mochi, reset, sparkle, twinkle,
     fireworks, boom, orbit, heartrain, shower, music, sing,
-    rainbow, giggle, laugh, zoomies, dash.
+    rainbow, giggle, laugh, zoomies, dash, annoyed, poke, dizzy,
+    showcase, parade, play all.
     Example: 'dance with kibo', 'make the pet sleep',
     'pet celebrates', 'fireworks please', 'sing a song'."""
     print(f"[Tool] pet_animate('{action}')")
@@ -100,3 +101,73 @@ def pet_animate(action: str) -> str:
     from agent.core.agent_state import set_pet_action
     set_pet_action(action.strip().lower())
     return f"Pet animation: {action.strip()}"
+
+
+def _remind(text, animation, action, sound=""):
+    from agent.core.agent_state import set_widget_message, set_pet_action
+    set_widget_message(text, animation, expires_in=10)
+    set_pet_action(action)
+    if sound:
+        try:
+            from agent.runner.reminder_sounds import play_sound
+            play_sound(sound)
+        except Exception:
+            pass
+    return text
+
+
+
+
+@needle.tool
+def remind_water() -> str:
+    """Remind the user to drink water: shows 'Drink water!' on the pet
+    widget with falling water drops and ripples.
+    Use when the user asks for a water reminder or says 'drink water'."""
+    print("[Tool] remind_water()")
+    return _remind("Drink water! Stay hydrated.", "fade", "drink water", "water")
+
+
+
+
+
+@needle.tool
+def remind_grass() -> str:
+    """Remind the user to touch grass / go outside: shows the message on
+    the pet widget with swaying grass, a flower and the sun.
+    Use when the user asks for a grass/outside/nature reminder."""
+    print("[Tool] remind_grass()")
+    return _remind("Touch grass! Go outside for a bit.", "fade", "touch grass", "grass")
+
+
+
+
+
+
+@needle.tool
+def remind_stretch() -> str:
+    """Remind the user to stretch: shows the message on the pet widget
+    with expanding breath rings. Use for stretch/stand-up reminders."""
+    print("[Tool] remind_stretch()")
+    return _remind("Stretch! Stand up and move.", "fade", "stretch", "stretch")
+
+
+
+
+@needle.tool
+def remind_eyes() -> str:
+    """Remind the user to rest their eyes (20-20-20 rule): shows the
+    message on the pet widget with big roaming eyes.
+    Use for eye-break / blink reminders."""
+    print("[Tool] remind_eyes()")
+    return _remind("Rest your eyes! Look 20ft away for 20s.", "fade", "rest eyes", "eyes")
+
+
+
+
+
+@needle.tool
+def remind_posture() -> str:
+    """Remind the user to sit straight: shows the message on the pet
+    widget with an up-down posture arrow. Use for posture reminders."""
+    print("[Tool] remind_posture()")
+    return _remind("Sit tall! Straighten your back.", "fade", "sit straight", "posture")

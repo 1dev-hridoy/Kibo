@@ -4,12 +4,15 @@ import random
 
 def start_fx(av, kind):
     s = av.size
-    if kind.startswith("talk"):
+    if kind == "talk" or kind.startswith("talk:"):
         frames = 120
         parts = kind.split(":")
         if len(parts) > 1 and parts[1].isdigit():
             frames = max(30, min(400, int(parts[1])))
         av._fx["talk"] = frames
+        return
+    elif kind in ("water", "grass", "stretch", "eyes", "posture"):
+        av._fx[kind] = 140
         return
     if kind == "sparkle":
         for _ in range(26):
@@ -76,7 +79,7 @@ def update_fx(av):
         p["life"] -= 1
     fx["fire"] = [p for p in fx["fire"] if p["life"] > 0]
     for key in ("orbit", "rain", "music", "rainbow", "giggle", "zoom",
-                "talk"):
+                "talk", "water", "grass", "stretch", "eyes", "posture"):
         if fx.get(key, 0) > 0:
             fx[key] -= 1
 
@@ -101,6 +104,15 @@ def update_fx(av):
     for n in fx["notes"]:
         n["y"] -= 1.1; n["life"] -= 1
     fx["notes"] = [n for n in fx["notes"] if n["life"] > 0]
+    if fx.get("water", 0) > 0 and av._frame % 5 == 0:
+        fx["wdrops"].append({
+            "x": av.size // 2 + random.uniform(-22, 22),
+            "y": -6, "vy": random.uniform(2, 3.5), "life": 70,
+        })
+    for d in fx["wdrops"]:
+        d["y"] += d["vy"]; d["life"] -= 1
+    fx["wdrops"] = [d for d in fx["wdrops"]
+                    if d["life"] > 0 and d["y"] < av.size + 8]
 
 
 
@@ -170,6 +182,79 @@ def draw_fx(av):
                            fill="#a6e3a1", width=2)
             av.create_line(cx + w, y, cx + w - 10, y,
                            fill="#a6e3a1", width=2)
+    if fx.get("water", 0) > 0:
+        for d in fx["wdrops"]:
+            x, y = d["x"], d["y"]
+            av.create_oval(x - 3, y - 1, x + 3, y + 5,
+                           fill="#89dceb", outline="")
+            av.create_polygon(x - 3, y + 1, x + 3, y + 1, x, y - 5,
+                              fill="#89dceb", outline="")
+        ripple = (av._frame % 30) / 30
+        rw = 4 + ripple * 14
+        av.create_oval(cx - rw, s - 8 - ripple * 2,
+                       cx + rw, s - 4 - ripple * 2,
+                       outline="#89dceb", width=1)
+        av.create_text(cx, 10, text="drink up!", fill="#89dceb",
+                       font=("Segoe UI", 7, "bold"))
+
+        
+    if fx.get("grass", 0) > 0:
+        gy = s - 3
+        for i in range(7):
+            bx = cx - 30 + i * 10
+            sway = math.sin(av._frame * 0.15 + i * 0.9) * 3
+            h = 12 + (i % 3) * 4
+            av.create_line(bx, gy, bx + sway, gy - h,
+                           fill="#a6e3a1", width=2, capstyle="round")
+        fx0 = cx + 24
+        fy = gy - 16 + math.sin(av._frame * 0.1) * 1.5
+        for px, py in ((fx0 - 3, fy), (fx0 + 3, fy),
+                       (fx0, fy - 3), (fx0, fy + 3)):
+            av.create_oval(px - 2.5, py - 2.5, px + 2.5, py + 2.5,
+                           fill="#f5c2e7", outline="")
+        av.create_oval(fx0 - 2, fy - 2, fx0 + 2, fy + 2,
+                       fill="#f9e2af", outline="")
+        av.create_oval(cx - 34, 12, cx - 24, 22,
+                       fill="#f9e2af", outline="")
+        av.create_text(cx, 10, text="touch grass!", fill="#a6e3a1",
+                       font=("Segoe UI", 7, "bold"))
+
+
+        
+    if fx.get("stretch", 0) > 0:
+        phase = (av._frame % 60) / 60
+        rr = body_r + 4 + phase * 16
+        av.create_oval(cx - rr, cy - rr, cx + rr, cy + rr,
+                       outline="#cba6f7", width=2)
+        av.create_text(cx, cy - body_r - 12, text="↑ stretch ↑",
+                       fill="#cba6f7", font=("Segoe UI", 8, "bold"))
+
+
+        
+    if fx.get("eyes", 0) > 0:
+        look = math.sin(av._frame * 0.12) * 4
+        for ex in (cx - 13, cx + 13):
+            av.create_oval(ex - 9, cy - 8, ex + 9, cy + 8,
+                           fill="white", outline="#2b2438", width=1)
+            av.create_oval(ex - 4 + look, cy - 4, ex + 4 + look, cy + 4,
+                           fill="#2b2438", outline="")
+        av.create_text(cx, 10, text="20-20-20: look far!",
+                       fill="#f9e2af", font=("Segoe UI", 7, "bold"))
+
+
+
+        
+    if fx.get("posture", 0) > 0:
+        bob = math.sin(av._frame * 0.2) * 2
+        px = cx - body_r - 10
+        av.create_line(px, cy + 18 + bob, px, cy - 18 + bob,
+                       fill="#f38ba8", width=2)
+        av.create_polygon(px - 4, cy - 18 + bob, px + 4, cy - 18 + bob,
+                          px, cy - 24 + bob, fill="#f38ba8", outline="")
+        av.create_polygon(px - 4, cy + 18 + bob, px + 4, cy + 18 + bob,
+                          px, cy + 24 + bob, fill="#f38ba8", outline="")
+        av.create_text(cx, 10, text="sit tall!",
+                       fill="#f38ba8", font=("Segoe UI", 7, "bold"))
     if fx.get("talk", 0) > 0:
         flap = abs(math.sin(av._frame * 0.55))
         mh = 2 + int(flap * 6)

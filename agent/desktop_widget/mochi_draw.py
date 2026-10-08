@@ -26,19 +26,22 @@ def draw_mochi(av):
         bounce += 0.8
 
     squish = math.sin(av._frame * 0.1 + 1.5) * 0.04
-    rx = body_r * (1 + squish)
-    ry = body_r * (1 - squish)
+    click_sq = getattr(av, "_squish", 0.0)
+    rx = body_r * (1 + squish + click_sq * 0.35)
+    ry = body_r * (1 - squish - click_sq * 0.28)
+    if av.state == "dizzy":
+        cx = cx + math.sin(av._frame * 0.8) * 4
     cy_b = cy + bounce
 
 
 
 
     halo_pulse = math.sin(av._frame * 0.05) * 0.3 + 0.7
-    for i in range(6):
-        halo_r = body_r + 3 + i * 2.5
-        alpha = (1 - i / 6) * halo_pulse
-        halo_c = mix(av.base_bg, color, alpha * 0.55)
-        stip = "gray12" if i > 3 else ("gray25" if i > 1 else "gray50")
+    for i in range(3):
+        halo_r = body_r + 3 + i * 3.5
+        alpha = (1 - i / 3) * halo_pulse
+        halo_c = mix(av.base_bg, color, alpha * 0.35)
+        stip = "gray25" if i > 1 else "gray50"
         av.create_oval(cx - halo_r, cy_b - halo_r,
                        cx + halo_r, cy_b + halo_r,
                        fill=halo_c, outline="", stipple=stip)
@@ -113,10 +116,6 @@ def draw_mochi(av):
                    cx - rx * 0.15, cy_b - ry * 0.45,
                    fill=shade(color, 0.55), outline="",
                    stipple="gray50")
-    av.create_oval(cx - rx * 0.7, cy_b + ry * 0.15,
-                   cx + rx * 0.7, cy_b + ry * 0.95,
-                   fill=shade(color, 0.30), outline="",
-                   stipple="gray50")
 
 
 
@@ -157,12 +156,35 @@ def draw_mochi(av):
     elif av.state == "happy":
         for ex in (cx - eyespace, cx + eyespace):
             av.create_arc(ex - eye_r * 1.1, eye_y - eye_r * 0.5,
-                          ex + eye_r * 1.1, eye_y + eye_r * 1.2,
-                          start=20, extent=140, style="arc",
-                          outline=ink, width=2.2)
+                           ex + eye_r * 1.1, eye_y + eye_r * 1.2,
+                           start=20, extent=140, style="arc",
+                           outline=ink, width=2.2)
             av.create_text(ex + eye_r * 1.4, eye_y - eye_r * 0.9,
-                           text="✦", fill="#fff3b0",
-                           font=("Segoe UI", 7))
+                            text="✦", fill="#fff3b0",
+                            font=("Segoe UI", 7))
+
+
+            
+    elif av.state == "annoyed":
+        for ex in (cx - eyespace, cx + eyespace):
+            av.create_line(ex - eye_r * 0.8, eye_y - eye_r * 0.8,
+                           ex + eye_r * 0.8, eye_y + eye_r * 0.8,
+                           fill=ink, width=2.2, capstyle="round")
+            av.create_line(ex - eye_r * 0.8, eye_y + eye_r * 0.8,
+                           ex + eye_r * 0.8, eye_y - eye_r * 0.8,
+                           fill=ink, width=2.2, capstyle="round")
+
+
+            
+    elif av.state == "dizzy":
+        for ex in (cx - eyespace, cx + eyespace):
+            pts = []
+            for k in range(26):
+                ang = k * 0.55 + av._frame * 0.05
+                r = 1 + k * 0.26
+                pts += [ex + math.cos(ang) * r,
+                        eye_y + math.sin(ang) * r * 0.8]
+            av.create_line(*pts, fill=ink, width=1.6, smooth=True)
     else:
         for ex in (cx - eyespace, cx + eyespace):
             if av._hovering:
@@ -292,7 +314,25 @@ def draw_mochi(av):
         
     elif av.state == "sleepy":
         av.create_line(cx - mw, my, cx + mw, my,
-                       fill=ink, width=1.6, capstyle="round")
+
+                       
+                        fill=ink, width=1.6, capstyle="round")
+
+        
+    elif av.state == "annoyed":
+        pts = []
+        for i in range(5):
+            px = cx - mw + i * (mw / 2)
+            py = my + (3 if i % 2 == 0 else -3)
+            pts += [px, py]
+        av.create_line(*pts, fill=ink, width=1.8, capstyle="round")
+
+
+
+    elif av.state == "dizzy":
+        r = s * 0.045
+        av.create_oval(cx - r, my - r, cx + r, my + r,
+                       fill=ink, outline="")
     else:
         av.create_oval(cx - mw, my - mw * 0.5, cx + mw, my + mw * 1.4,
                        fill=ink, outline="")

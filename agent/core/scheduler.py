@@ -121,6 +121,24 @@ def _run_job(job):
     try:
 
    
+        if job["command"].startswith("reminder:"):
+            import datetime
+            hour = datetime.datetime.now().hour
+            if hour >= 23 or hour < 7:
+                return
+            name = job["command"].split(":", 1)[1]
+            from agent.tools import ALL_TOOLS
+            
+            
+            for fn in ALL_TOOLS:
+
+
+                if fn.__name__ == name:
+                    fn()
+                    return
+            print(f"[Scheduler] Unknown tool '{name}'")
+            return
+
         if job["command"].startswith("agent:"):
   
             from agent.core.ask import ask

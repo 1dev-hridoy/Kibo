@@ -4,7 +4,7 @@ import os
 CONFIG_FILE = os.path.expanduser("~/.config/kibo/widget_config.json")
 
 DEFAULT_CONFIG = {
-    "width": 2100,
+    "width": 760,
     "idle_width": 100,
     "height": 120,
     "avatar_size": 96,
@@ -20,7 +20,7 @@ DEFAULT_CONFIG = {
     "opacity": 0.97,
     "poll_interval": 1.0,
     "api_base": "http://127.0.0.1:5000",
-    "pixel_screensaver_seconds": 45,
+    "pixel_screensaver_seconds": 0,
 }
 
 

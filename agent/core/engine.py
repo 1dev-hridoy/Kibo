@@ -69,6 +69,13 @@ def reload_backend():
 
 _backend = _init_backend()
 
+try:
+    if not os.environ.get("KIBO_NO_REMINDERS"):
+        from agent.runner.reminders import ensure_jobs
+        ensure_jobs()
+except Exception:
+    pass
+
 
 def _agent_loop(text, max_steps=4):
     """Drive the engine with a hallucination guard: calls scoring below

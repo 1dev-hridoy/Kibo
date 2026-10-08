@@ -60,7 +60,7 @@ def _fastpath(text):
                 "heartrain", "heart rain", "hearts rain", "falling hearts",
                 "shower", "love", "hearts", "heart", "hug", "kiss", "cuddle",
                 "sleepy", "yawn", "nap", "bedtime", "go to sleep",
-                "mochi", "pixel")
+                "mochi", "pixel", "showcase", "parade", "play all", "show all")
 
 
     
@@ -72,7 +72,7 @@ def _fastpath(text):
                      "party", "yay", "hooray", "zoomies", "zoom",
                      "heartrain", "heart rain", "shower", "love", "hearts",
                      "hug", "kiss", "cuddle", "sleepy", "yawn", "nap",
-                     "bedtime", "go to sleep", "mochi", "pixel")
+                     "bedtime", "go to sleep", "mochi", "pixel", "showcase", "parade", "play all", "show all")
     if re.search(r"\b(pet|kibo|mochi)\b", t) and any(w in t for w in _pet_any):
         return [("pet_animate", {"action": t})]
 
@@ -89,9 +89,29 @@ def _fastpath(text):
     m = re.match(r"^pet\s+send\s+(.+)$", t)
     if m:
         return [("pet_send", {"text": m.group(1).strip()})]
-    m = re.match(r"^(?:kibo\s+message\s+set|set\s+(?:kibo\s+)?message|set\s+kibo|widget\s+(?:show|set)|show\s+(?:on\s+)?(?:the\s+)?widget)\s+(.+)$", t)
+    m = re.match(r"^(?:kibo\s+message\s+set|set\s+(?:kibo\s+|widget\s+)?message|set\s+(?:kibo|widget)|widget\s+(?:show|set)|show\s+(?:on\s+)?(?:the\s+)?widget)\s+(.+)$", t)
     if m and not re.search(r"\b(volume|brightness|sound|model)\b", m.group(1)):
         return [("widget_set_message", {"message": m.group(1).strip()})]
+    if re.match(r"^(?:clear|reset|hide)\s+(?:the\s+)?widget(?:\s+message|\s+text)?$|^(?:widget|pet|weight|wedget|wiget)\s+(?:clear|reset|hide|free)$", t):
+        return [("widget_clear", {})]
+    if re.search(r"\bwidget\b.*\bfree\b|\bfree\b.*\bwidget\b", t):
+        return [("widget_clear", {})]
+    if re.search(r"\bdrink\b.*\bwater\b|\bwater\b.*\bdrink\b|\bhydrate\b|\bglass of water\b", t):
+        return [("remind_water", {})]
+    if re.search(r"\btouch grass\b|\bgo outside\b|\bfresh air\b", t):
+        return [("remind_grass", {})]
+    if re.match(r"^(?:time to |go |come on,? )?(?:stretch|do some stretching)(?:\s+(?:a bit|now|please))?$", t):
+        return [("remind_stretch", {})]
+    if re.search(r"\b(?:rest|give).*eyes\b|\beye break\b|\bblink\b.*\bbreak\b|\b20-20-20\b", t):
+        return [("remind_eyes", {})]
+    if re.search(r"\bposture\b|\bsit (?:up )?straight\b|\bstraighten.*back\b|\bsit tall\b", t):
+        return [("remind_posture", {})]
+    if re.match(r"^(?:turn\s+)?reminders?\s+on$|^(?:enable|start)\s+reminders?$", t):
+        return [("reminders_on", {})]
+    if re.match(r"^(?:turn\s+)?reminders?\s+off$|^(?:disable|stop|pause)\s+reminders?$", t):
+        return [("reminders_off", {})]
+    if re.match(r"^reminders?(?:\s+status)?$", t):
+        return [("reminders_status", {})]
     if re.match(r"^(?:live(?:\s+(?:screen|view))?|show\s+(?:live|my)\s+screen)$", t):
         return [("take_screenshot_now", {})]
 
@@ -289,6 +309,7 @@ def _fastpath(text):
             ("happy", "say 'be happy'"),
             ("sleepy", "say 'go to sleep'"),
             ("pixel cat", "say 'pixel cat'"),
+            ("everything, one by one", "say 'showcase'"),
         ]
         lines = ["Pet animations — try one:"] + [f"  - {name}: {how}" for name, how in previews]
         return "__reply__", "\n".join(lines)

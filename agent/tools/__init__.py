@@ -69,9 +69,13 @@ from agent.tools.voice_tools import (
     voice_start_listener, voice_stop_listener, voice_listener_status,
     voice_listen_now, voice_transcribe_only,
 )
+from agent.tools.reminders_tools import (
+    reminders_on, reminders_off, reminders_status,
+)
 from agent.tools.widget_tools import (
     widget_set_message, widget_clear,
     pet_show, pet_send, pet_love, pet_clear, pet_animate,
+    remind_water, remind_grass, remind_stretch, remind_eyes, remind_posture,
 )
 from agent.tools.autostart_tools import (
     autostart_enable, autostart_disable, autostart_status,
@@ -141,5 +145,7 @@ ALL_TOOLS = [
     # widget
     widget_set_message, widget_clear,
     pet_show, pet_send, pet_love, pet_clear, pet_animate,
+    remind_water, remind_grass, remind_stretch, remind_eyes, remind_posture,
+    reminders_on, reminders_off, reminders_status,
     autostart_enable, autostart_disable, autostart_status,
 ]
