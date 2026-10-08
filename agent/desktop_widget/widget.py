@@ -20,7 +20,8 @@ class KiboWidget:
         self._collapse_after = None
         self._last_seen_state = "idle"
         self._peek_until = 0
-        self._peek_layout = False
+        self._shown_custom = ""
+        self._compact = False
         self._drag_x = None
         self._drag_y = None
         self._idle_seconds = 0
@@ -71,9 +72,8 @@ class KiboWidget:
     def _on_motion(self, event):
         if self._pet_at(event):
             return
-        if self._last_seen_state == "idle" and not self._expanded:
+        if self._last_seen_state == "idle":
             self._peek_until = time.time() + 2.5
-            self._set_expanded(True)
             self.status_label.set_animated("hi!")
 
     def _do_drag(self, event):
@@ -123,31 +123,24 @@ class KiboWidget:
                                       ("Segoe UI", fs - 1, "bold"), 0,
                                       east=True)
 
-    def _set_expanded(self, expanded: bool):
-        if expanded == self._expanded and not self._peek_layout:
+    def _set_expanded(self, expanded: bool, compact: bool = False):
+        if expanded == self._expanded and compact == self._compact:
             return
         self._expanded = expanded
+        self._compact = compact
         h = self.cfg["height"]
         if expanded:
-            if time.time() < self._peek_until:
-                w = 480
-                self._peek_layout = True
-            else:
-                w = self._w_active
-                self._peek_layout = False
+            w = 480 if compact else self._w_active
             self.avatar.docked_left = True
-            x = (self.root.winfo_screenwidth() - w) // 2
-            self.root.geometry(f"{w}x{h}+{x}+{self.cfg.get('y', 0)}")
         else:
             w = self._w_idle
-            self._peek_layout = False
             self.avatar.docked_left = False
             self.status_label.hide()
             self.task_label.hide()
             self.tool_label.hide()
             self.model_label.hide()
-            x = (self.root.winfo_screenwidth() - w) // 2
-            self.root.geometry(f"{w}x{h}+{x}+{self.cfg.get('y', 0)}")
+        x = (self.root.winfo_screenwidth() - w) // 2
+        self.root.geometry(f"{w}x{h}+{x}+{self.cfg.get('y', 0)}")
 
     def _start_poller(self):
         def poll():
@@ -206,7 +199,6 @@ class KiboWidget:
         idle_since = status.get("_idle_since", 0)
         recently_active = state != "idle" or (time.time() - idle_since) < 3.0
         peeking = time.time() < self._peek_until
-        is_active = state != "idle" or bool(custom) or recently_active or peeking
 
         if state == "idle" and not custom and not recently_active:
             self._idle_seconds += self.cfg["poll_interval"]
@@ -226,11 +218,17 @@ class KiboWidget:
            self._last_state in ("working", "custom"):
             self.avatar.celebrate()
 
-        self._set_expanded(is_active)
+        self._set_expanded(True, compact=(state == "idle"))
 
         if state == "idle" and not custom and not recently_active:
             self.avatar.set_state("sleepy" if self._idle_seconds > 20 else "idle")
-            if time.time() < self._peek_until:
+            self._shown_custom = ""
+            if time.time() >= self._peek_until:
+                self.status_label.config(
+                    text=time.strftime("%H:%M"))
+                self.task_label.config(text=self._sys_info())
+                self.tool_label.hide()
+            else:
                 self._schedule_collapse(
                     int((self._peek_until - time.time()) * 1000))
             self._last_state = "idle"
@@ -305,6 +303,39 @@ class KiboWidget:
         self._last_state = state
         self._last_seen_state = state
 
+    def _sys_info(self):
+        try:
+
+
+            import shutil
+            free = shutil.disk_usage("/").free // (1024 ** 3)
+            parts = [f"{free}G free"]
+        except Exception:
+            parts = []
+        
+        
+        try:
+            import glob
+            bats = glob.glob("/sys/class/power_supply/BAT*/capacity")
+            if bats:
+                with open(bats[0]) as f:
+                    parts.append(f"{f.read().strip()}%")
+        
+        except Exception:
+            pass
+        
+        
+        try:
+            with open("/proc/loadavg") as f:
+                load = float(f.read().split()[0])
+            import os
+            cores = os.cpu_count() or 1
+        
+            parts.append(f"cpu {int(load / cores * 100)}%")
+        except Exception:
+            pass
+        return " · ".join(parts) if parts else "idle"
+
     def _cancel_collapse(self):
         if self._collapse_after:
             try:
@@ -322,7 +353,7 @@ class KiboWidget:
         self.status_label.hide()
         self.task_label.hide()
         self.tool_label.hide()
-        self._set_expanded(False)
+        self._set_expanded(True, compact=True)
 
     def _expire_custom(self, msg=None):
         if msg is not None and msg != getattr(self, "_shown_custom", ""):

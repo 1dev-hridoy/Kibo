@@ -120,6 +120,8 @@ def _fastpath(text):
         return [("briefing_off", {})]
     if re.match(r"^briefing(?:\s+status)?$", t):
         return [("briefing_status", {})]
+    if re.search(r"\bbrief(?:ing|_today)?\b", t):
+        return [("brief_today", {})]
     if re.match(r"^(?:live(?:\s+(?:screen|view))?|show\s+(?:live|my)\s+screen)$", t):
         return [("take_screenshot_now", {})]
 

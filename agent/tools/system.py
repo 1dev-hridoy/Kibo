@@ -22,6 +22,12 @@ def show_toast(message: str):
 def show_notification(title: str, message: str = ""):
     """Show a persistent desktop notification with a title and body."""
     print(f"[Tool] show_notification('{title}')")
+    try:
+        from agent.core.agent_state import set_widget_message
+        text = f"{title}: {message}".strip(": ")[:80] if message else title[:80]
+        set_widget_message(text, "fade", expires_in=10)
+    except Exception:
+        pass
     return notify(title, message)
 
 
