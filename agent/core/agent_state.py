@@ -26,11 +26,11 @@ def get_agent_state():
 
 
 def set_widget_message(message: str, animation: str = "fade",
-                         expires_in: int = 0):
+                         expires_in: int = 30):
     """Set a custom message shown in the desktop widget."""
     _agent_state["custom_message"] = message[:80]
     _agent_state["custom_animation"] = animation or "fade"
-    _agent_state["custom_expires_in"] = expires_in or 0
+    _agent_state["custom_expires_in"] = expires_in or 30
     try:
         import json as _json
         import os as _os
@@ -40,7 +40,7 @@ def set_widget_message(message: str, animation: str = "fade",
         with open(tmp, "w") as f:
             _json.dump({"message": message[:80],
                         "animation": animation or "fade",
-                        "expires_in": expires_in or 0}, f)
+                        "expires_in": expires_in or 30}, f)
         _os.replace(tmp, path)
     except OSError:
         pass

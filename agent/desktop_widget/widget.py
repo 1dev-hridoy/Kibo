@@ -359,6 +359,8 @@ class KiboWidget:
         if msg is not None and msg != getattr(self, "_shown_custom", ""):
             return
         if self._last_seen_state != "idle":
+            self.root.after(5000,
+                            lambda c=msg: self._expire_custom(c))
             return
         try:
             from agent.core.agent_state import clear_widget_message
