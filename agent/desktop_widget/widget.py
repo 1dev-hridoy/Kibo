@@ -8,7 +8,6 @@ from agent.desktop_widget.space_bg import SpaceBackground
 from agent.desktop_widget.avatar import MochiAvatar
 from agent.desktop_widget.canvas_text import CanvasText
 
-
 class KiboWidget:
     def __init__(self):
         self.cfg = load_config()
@@ -20,7 +19,22 @@ class KiboWidget:
         self._collapse_after = None
         self._last_seen_state = "idle"
         self._peek_until = 0
+        self._hovering = False
         self._shown_custom = ""
+        self._cur_custom = ""
+        self._cur_anim = "fade"
+        self._card_hidden = False
+        self._card_key = None
+        self._msg_collapsed = False
+        self._msg_timer_armed = False
+        self._msg_mtime = None
+        self._scroll_active = False
+        self._scroll_seq = 0
+        self._pending_scroll = None
+        self._scroll_msgs = []
+        self._scroll_idx = 0
+        self._scroll_t = 0.0
+        self._scroll_last = ""
         self._compact = False
         self._drag_x = None
         self._drag_y = None
@@ -83,10 +97,12 @@ class KiboWidget:
         self.frame.bind("<Motion>", lambda e: on_motion(self, e))
         self.frame.bind("<Leave>", lambda e: on_leave(self, e))
 
+        self._font_status = ("Segoe UI", fs + 1, "bold")
+        self._font_info = ("Segoe UI", fs - 1)
         self.status_label = CanvasText(self.root, self.frame, 0, fg,
-                                       ("Segoe UI", fs + 1, "bold"), 0.38)
+                                       self._font_status, 0.38)
         self.task_label = CanvasText(self.root, self.frame, 1, "#9399b2",
-                                     ("Segoe UI", fs - 1), 0.62)
+                                     self._font_info, 0.62)
         self.tool_label = CanvasText(
             self.root, self.frame, 2,
             self.cfg.get("tool_color", "#94e2d5"),
@@ -108,11 +124,14 @@ class KiboWidget:
         else:
             w = self._w_idle
             self.avatar.docked_left = False
+            self._card_hidden = True
             self.status_label.hide()
             self.task_label.hide()
             self.tool_label.hide()
             self.model_label.hide()
         from agent.desktop_widget.window_fx import animate_width
+        for lbl in (self.status_label, self.task_label, self.tool_label):
+            lbl.set_wrap(max(140, w - 150))
         animate_width(self, w)
 
     def _start_poller(self):
@@ -140,28 +159,18 @@ class KiboWidget:
                     self.root.after(30000, lambda: self._loading_done(tok))
             self.root.after(0, lambda n=name: self.model_label.config(
                 text=f" {n} "))
+        else:
+            # No model info (server down or not started yet) - stop the
+            # startup spinner so the idle card is not blocked forever.
+            self.avatar.loading = False
         status = self.api.get_status()
         if "error" in status:
             status = {"state": "idle", "current_task": "", "current_tool": "",
                       "tools_done": 0, "tools_total": 0, "history": [],
                       "custom_message": "", "_idle_since": 0}
- 
- 
-        try:
-            from agent.core.agent_state import read_pet_action_file
-            faction, fseq = read_pet_action_file()
-            if fseq > status.get("pet_seq", 0):
-                status["pet_action"] = faction
-                status["pet_seq"] = fseq
-            if not status.get("custom_message"):
-                from agent.core.agent_state import read_pet_message_file
-                fmsg, fanim, fexp = read_pet_message_file()
-                if fmsg:
-                    status["custom_message"] = fmsg
-                    status["custom_animation"] = fanim
-                    status["custom_expires_in"] = fexp
-        except Exception:
-            pass
+
+        from agent.desktop_widget.msg_state import merge_shared_files
+        merge_shared_files(self, status)
         self.root.after(0, lambda: self._apply_status(status))
 
     def _apply_status(self, status):
@@ -176,6 +185,8 @@ class KiboWidget:
         custom = status.get("custom_message", "")
         custom_anim = status.get("custom_animation", "fade")
         custom_exp = status.get("custom_expires_in", 0) or 0
+        self._cur_custom = custom
+        self._cur_anim = custom_anim
         pet_action = status.get("pet_action", "")
         pet_seq = status.get("pet_seq", 0)
         if pet_seq != self._last_pet_seq:
@@ -184,8 +195,6 @@ class KiboWidget:
 
         idle_since = status.get("_idle_since", 0)
         recently_active = state != "idle" or (time.time() - idle_since) < 3.0
-        peeking = time.time() < self._peek_until
-
         if state == "idle" and not custom and not recently_active:
             self._idle_seconds += self.cfg["poll_interval"]
         else:
@@ -204,20 +213,43 @@ class KiboWidget:
            self._last_state in ("working", "custom"):
             self.avatar.celebrate()
 
-        is_active = state != "idle" or bool(custom) or recently_active \
-            or time.time() < self._peek_until
+        if self._pending_scroll:
+            msgs = self._pending_scroll
+            self._pending_scroll = None
+            from agent.desktop_widget.scroll_player import start
+            start(self, msgs)
+
+
+        if self._scroll_active:
+            self._last_state = "custom"
+            self._last_seen_state = "idle"
+            return
+
+        peeking = self._hovering or time.time() < self._peek_until
+        if custom and self._msg_collapsed:
+            # message already auto-collapsed: only a real hover reopens it
+            is_active = self._hovering
+        else:
+            is_active = state != "idle" or bool(custom) or recently_active \
+                or peeking
         self._set_expanded(is_active, compact=(state == "idle"))
 
         if state == "idle" and not custom and not recently_active:
             self.avatar.set_state("sleepy" if self._idle_seconds > 20 else "idle")
-            self._shown_custom = ""
-            if time.time() >= self._peek_until and not self.avatar.loading:
+     
+     
+            if peeking and not self.avatar.loading:
+                self._render_idle_card()
+                if self._hovering:
+                    self._cancel_collapse()
+                else:
+                    self._schedule_collapse(
+                        int((self._peek_until - time.time()) * 1000))
+            else:
+                self._card_hidden = True
                 self.status_label.hide()
                 self.task_label.hide()
                 self.tool_label.hide()
-            else:
-                self._schedule_collapse(
-                    int((self._peek_until - time.time()) * 1000))
             self._last_state = "idle"
             self._last_seen_state = "idle"
             return
@@ -241,19 +273,39 @@ class KiboWidget:
             return
 
         if custom and state == "idle":
-            self.avatar.set_state("working")
-            if self._last_state != "custom" or \
-                    getattr(self, "_shown_custom", "") != custom:
-                self._shown_custom = custom
-                self.status_label.set_animated(custom, mode=custom_anim)
+            self.avatar.set_state("idle")
+            changed = getattr(self, "_shown_raw", "") != custom
+            if changed or self._last_state != "custom":
+                self._msg_collapsed = False
+                self._msg_timer_armed = False
+
+
+
+            elif self._msg_collapsed and self._hovering:
+                # pointing at a collapsed widget brings the message back
+                self._msg_collapsed = False
+                self._msg_timer_armed = False
+
+
+            if self._msg_collapsed:
+                self._card_hidden = True
+                self.status_label.hide()
                 self.task_label.hide()
                 self.tool_label.hide()
-                self._cancel_collapse()
-                if custom_exp > 0:
-                    self.root.after(custom_exp * 1000,
-                                    lambda c=custom: self._expire_custom(c))
             else:
-                self.status_label.config(text=custom)
+                self._render_idle_card(custom, custom_anim, animate=changed)
+                if changed or self._last_state != "custom":
+                    self.avatar.trigger("sparkle")
+
+                    
+                    if custom_exp > 0:
+                        self.root.after(
+                            custom_exp * 1000,
+                            lambda c=custom: self._expire_custom(c))
+                if not self._msg_timer_armed:
+                    self._cancel_collapse()
+                    self._schedule_collapse(5000)
+                    self._msg_timer_armed = True
             self._last_state = "custom"
             self._last_seen_state = "idle"
             return
@@ -261,31 +313,9 @@ class KiboWidget:
         self.avatar.set_state(state)
         self._cancel_collapse()
 
-        if state == "working":
-            status_text = "Working..."
-            task_text = custom if custom else (task[:70] if task else "")
-        else:
-            status_text = "⚠ Needs approval"
-            task_text = custom if custom else (task[:70] if task else "Your input required")
-
-        if state != self._last_state:
-            self.status_label.set_animated(status_text)
-            if task_text:
-                self.task_label.set_animated(task_text, delay_ms=120)
-            else:
-                self.task_label.hide()
-        elif task_text:
-            self.task_label.config(text=task_text)
-
-        if tool:
-            progress = f" [{done}/{total}]" if total > 1 else ""
-            tool_text = f"⚙ {tool}{progress}"
-            self.tool_label.set_animated(tool_text, delay_ms=60)
-        elif history:
-            last = history[-1]
-            self.tool_label.config(text=f"✓ {last} ({done}/{total})")
-        else:
-            self.tool_label.hide()
+        from agent.desktop_widget.task_card import render_task_card
+        render_task_card(self, state, task, custom, tool,
+                         done, total, history)
 
         self._last_state = state
         self._last_seen_state = state
@@ -299,47 +329,24 @@ class KiboWidget:
             self.avatar.loading = False
 
     def _cancel_collapse(self):
-        if self._collapse_after:
-            try:
-                self.root.after_cancel(self._collapse_after)
-            except Exception:
-                pass
-            self._collapse_after = None
+        from agent.desktop_widget.msg_state import cancel_collapse
+        cancel_collapse(self)
 
     def _schedule_collapse(self, ms):
-        self._cancel_collapse()
-        self._collapse_after = self.root.after(ms, self._collapse)
+        from agent.desktop_widget.msg_state import schedule_collapse
+        schedule_collapse(self, ms)
+
+    def _render_idle_card(self, custom="", anim="fade", animate=None):
+        from agent.desktop_widget.idle_card import render_idle_card
+        render_idle_card(self, custom, anim, animate)
 
     def _collapse(self):
-        self._collapse_after = None
-        self.status_label.hide()
-        self.task_label.hide()
-        self.tool_label.hide()
-        self._set_expanded(False)
+        from agent.desktop_widget.msg_state import collapse
+        collapse(self)
 
     def _expire_custom(self, msg=None):
-        if msg is not None and msg != getattr(self, "_shown_custom", ""):
-            return
-        if self._last_seen_state != "idle":
-            self.root.after(5000,
-                            lambda c=msg: self._expire_custom(c))
-            return
-        try:
-            from agent.core.agent_state import clear_widget_message
-            clear_widget_message()
-        except Exception:
-            pass
-        try:
-            import os
-            p = os.path.expanduser("~/.config/kibo/pet_message.json")
-            if os.path.exists(p):
-                os.remove(p)
-        except OSError:
-            pass
-        self._collapse()
-
-
-        
+        from agent.desktop_widget.msg_state import expire_custom
+        expire_custom(self, msg)
 
     def _show_menu(self, event):
         menu = tk.Menu(self.root, tearoff=0, bg="#1e1e2e", fg="#cdd6f4",
