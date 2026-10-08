@@ -41,6 +41,8 @@ def _fastpath(text):
     # ═══════════════════════════════════════════════════════════════════
     m = re.match(r"^(?:switch|change|use)\s+(?:to\s+)?(?:the\s+)?(?:model\s+)?(\w+)$", t)
     if m:
+        if m.group(1).lower() in ("model", "models"):
+            return "__models__", None
         return "__switch_model__", m.group(1).lower()
     if t in ("needle", "needle2", "n", "gemma", "google", "func", "functiongemma", "fg"):
         return "__switch_model__", t
@@ -48,6 +50,50 @@ def _fastpath(text):
         return "__current_model__", None
     if re.match(r"^(?:list|show)\s+models?$", t):
         return "__models__", None
+
+    _pet_any = ("fireworks", "firework", "boom", "cracker", "blast",
+                "sparkle", "sparkles", "shiny", "twinkle", "glitter",
+                "orbit", "satellite", "halo", "rainbow", "pride", "colors",
+                "music", "sing", "song", "melody", "tune", "humming",
+                "giggle", "teehee", "laugh", "dance", "celebrate", "party",
+                "yay", "hooray", "clap", "zoomies", "zoom",
+                "heartrain", "heart rain", "hearts rain", "falling hearts",
+                "shower", "love", "hearts", "heart", "hug", "kiss", "cuddle",
+                "sleepy", "yawn", "nap", "bedtime", "go to sleep",
+                "mochi", "pixel")
+
+
+    
+    _pet_distinct = ("fireworks", "firework", "boom", "cracker", "blast",
+                     "sparkle", "sparkles", "shiny", "twinkle", "glitter",
+                     "orbit", "satellite", "halo", "rainbow", "pride",
+                     "music", "sing", "song", "melody", "tune",
+                     "giggle", "teehee", "laugh", "dance", "celebrate",
+                     "party", "yay", "hooray", "zoomies", "zoom",
+                     "heartrain", "heart rain", "shower", "love", "hearts",
+                     "hug", "kiss", "cuddle", "sleepy", "yawn", "nap",
+                     "bedtime", "go to sleep", "mochi", "pixel")
+    if re.search(r"\b(pet|kibo|mochi)\b", t) and any(w in t for w in _pet_any):
+        return [("pet_animate", {"action": t})]
+
+    if re.search(r"\bi love you\b", t):
+        return [("pet_love", {})]
+    if len(t.split()) <= 3 and not re.search(r"\d", t) and \
+            any(w in t for w in _pet_distinct):
+        return [("pet_animate", {"action": t})]
+
+
+    m = re.match(r"^pet\s+show\s+(.+)$", t)
+    if m:
+        return [("pet_show", {"text": m.group(1).strip()})]
+    m = re.match(r"^pet\s+send\s+(.+)$", t)
+    if m:
+        return [("pet_send", {"text": m.group(1).strip()})]
+    m = re.match(r"^(?:kibo\s+message\s+set|set\s+(?:kibo\s+)?message|set\s+kibo|widget\s+(?:show|set)|show\s+(?:on\s+)?(?:the\s+)?widget)\s+(.+)$", t)
+    if m and not re.search(r"\b(volume|brightness|sound|model)\b", m.group(1)):
+        return [("widget_set_message", {"message": m.group(1).strip()})]
+    if re.match(r"^(?:live(?:\s+(?:screen|view))?|show\s+(?:live|my)\s+screen)$", t):
+        return [("take_screenshot_now", {})]
 
     # ═══════════════════════════════════════════════════════════════════
     # VOLUME
@@ -228,6 +274,25 @@ def _fastpath(text):
     # ═══════════════════════════════════════════════════════════════════
     # NOTIFICATIONS / TTS / CLIPBOARD
     # ═══════════════════════════════════════════════════════════════════
+    if re.match(r"^(?:(?:list|show|what are|give me)(?:\s+(?:me|all|the|my))*\s+(?:pet\s+)?animations?(?:\s+list)?|animations?(?:\s+list)?)$", t):
+        previews = [
+            ("sparkle", "say 'sparkle please'"),
+            ("fireworks", "say 'fireworks please'"),
+            ("orbit", "say 'orbit stars'"),
+            ("heart rain", "say 'rain hearts'"),
+            ("music", "say 'sing a song'"),
+            ("rainbow", "say 'show a rainbow'"),
+            ("giggle", "say 'giggle please'"),
+            ("zoomies", "say 'zoom around'"),
+            ("dance", "say 'dance with kibo'"),
+            ("love", "say 'send love'"),
+            ("happy", "say 'be happy'"),
+            ("sleepy", "say 'go to sleep'"),
+            ("pixel cat", "say 'pixel cat'"),
+        ]
+        lines = ["Pet animations — try one:"] + [f"  - {name}: {how}" for name, how in previews]
+        return "__reply__", "\n".join(lines)
+
     m = re.search(r"(?:show|send|display|notify|toast).*?[\"'](.+?)[\"']", t)
     if not m:
         m = re.search(r"(?:show|send|display|notify|toast)\s+(.+)", t)

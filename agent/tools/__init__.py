@@ -69,7 +69,10 @@ from agent.tools.voice_tools import (
     voice_start_listener, voice_stop_listener, voice_listener_status,
     voice_listen_now, voice_transcribe_only,
 )
-from agent.tools.widget_tools import widget_set_message, widget_clear
+from agent.tools.widget_tools import (
+    widget_set_message, widget_clear,
+    pet_show, pet_send, pet_love, pet_clear, pet_animate,
+)
 from agent.tools.autostart_tools import (
     autostart_enable, autostart_disable, autostart_status,
 )
@@ -137,5 +140,6 @@ ALL_TOOLS = [
     voice_listen_now, voice_transcribe_only,
     # widget
     widget_set_message, widget_clear,
+    pet_show, pet_send, pet_love, pet_clear, pet_animate,
     autostart_enable, autostart_disable, autostart_status,
 ]

@@ -79,6 +79,10 @@ def ask(text: str) -> dict:
             success, msg = switch_model(model_name)
             if success:
                 reload_backend()
+                from agent.model_manager import get_active_model as _active
+                if _active() != resolve_model_name(model_name):
+                    msg = (msg + "\nNote: the new backend could not load, "
+                           "still running on the previous model.")
             add_exchange(text, msg)
 
 

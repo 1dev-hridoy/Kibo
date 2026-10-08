@@ -53,14 +53,15 @@ async function showModelPicker() {
     data.models.forEach(m => {
       const btn = document.createElement('button');
       btn.className = 'btn w-100 text-start mb-2';
-      btn.disabled = !m.available || m.active;
+      btn.disabled = m.active;
       btn.innerHTML = (m.active ? '&#9679; ' : '&#9675; ') + esc(m.name) + ' <span class="text-muted small">' + esc(m.size) + '</span>' +
         (m.available ? '' : ' <span class="text-danger small">not downloaded</span>');
       btn.onclick = async () => {
-        await fetch('/api/model', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ model: m.key }) });
+        const r = await fetch('/api/model', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ model: m.key }) });
+        const d = await r.json();
         document.getElementById('model-dialog').close();
         loadModel();
-        addMsg('Kibo', 'agent', 'Switched to ' + esc(m.name));
+        addMsg('Kibo', 'agent', esc(d.message || ('Switched to ' + m.name)));
       };
       list.appendChild(btn);
     });

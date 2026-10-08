@@ -15,17 +15,47 @@ class AnimLabel(tk.Label):
         self._bg = bg
         self._anim_id = None
 
-    def set_animated(self, text, delay_ms=0):
+    def set_animated(self, text, delay_ms=0, mode="fade"):
         if self._anim_id:
             try:
                 self.after_cancel(self._anim_id)
             except Exception:
                 pass
         self.config(text="")
-        if delay_ms:
-            self.after(delay_ms, lambda: self._fade_in(text, 0))
+        if mode == "type":
+            self.after(delay_ms or 0, lambda: self._typewriter(text, 0))
+        elif mode == "hearts":
+            self.after(delay_ms or 0, lambda: self._hearts_fade(f"♥♥ {text} ♥♥", 0))
         else:
-            self._fade_in(text, 0)
+            if delay_ms:
+                self.after(delay_ms, lambda: self._fade_in(text, 0))
+            else:
+                self._fade_in(text, 0)
+
+    def _typewriter(self, text, i):
+        if i > len(text):
+            return
+        self.config(text=text[:i])
+        self._anim_id = self.after(35, lambda: self._typewriter(text, i + 1))
+
+
+
+    def _hearts_fade(self, text, step):
+        self.config(text=text)
+        steps = 9
+        if step >= steps:
+            return
+
+        
+        try:
+            r2 = int("#f38ba8"[1:3], 16); g2 = int("#f38ba8"[3:5], 16); b2 = int("#f38ba8"[5:7], 16)
+            r1 = int(self._bg[1:3], 16); g1 = int(self._bg[3:5], 16); b1 = int(self._bg[5:7], 16)
+            t = step / steps
+            r = int(r1 + (r2 - r1) * t); g = int(g1 + (g2 - g1) * t); b = int(b1 + (b2 - b1) * t)
+            self.config(fg=f"#{r:02x}{g:02x}{b:02x}")
+        except (ValueError, IndexError):
+            self.config(fg="#f38ba8")
+        self._anim_id = self.after(50, lambda: self._hearts_fade(text, step + 1))
 
     def _fade_in(self, text, step):
         self.config(text=text)
@@ -65,6 +95,7 @@ class KiboWidget:
         self.running = True
         self._expanded = False
         self._last_state = None
+        self._last_pet_seq = 0
         self._drag_x = None
         self._drag_y = None
         self._idle_seconds = 0
@@ -179,8 +210,27 @@ class KiboWidget:
             name = model_info.get("name", model_info["active"])
             self.root.after(0, lambda: self.model_var.set(f" {name} "))
         status = self.api.get_status()
-        if "error" not in status:
-            self.root.after(0, lambda: self._apply_status(status))
+        if "error" in status:
+            status = {"state": "idle", "current_task": "", "current_tool": "",
+                      "tools_done": 0, "tools_total": 0, "history": [],
+                      "custom_message": "", "_idle_since": 0}
+ 
+ 
+        try:
+            from agent.core.agent_state import read_pet_action_file
+            faction, fseq = read_pet_action_file()
+            if fseq > status.get("pet_seq", 0):
+                status["pet_action"] = faction
+                status["pet_seq"] = fseq
+            if not status.get("custom_message"):
+                from agent.core.agent_state import read_pet_message_file
+                fmsg, fanim = read_pet_message_file()
+                if fmsg:
+                    status["custom_message"] = fmsg
+                    status["custom_animation"] = fanim
+        except Exception:
+            pass
+        self.root.after(0, lambda: self._apply_status(status))
 
     def _apply_status(self, status):
         state = status.get("state", "idle")
@@ -190,6 +240,12 @@ class KiboWidget:
         total = status.get("tools_total", 0)
         history = status.get("history", [])
         custom = status.get("custom_message", "")
+        custom_anim = status.get("custom_animation", "fade")
+        pet_action = status.get("pet_action", "")
+        pet_seq = status.get("pet_seq", 0)
+        if pet_seq != self._last_pet_seq:
+            self._last_pet_seq = pet_seq
+            self.avatar.trigger(pet_action)
 
         idle_since = status.get("_idle_since", 0)
         recently_active = state != "idle" or (time.time() - idle_since) < 3.0
@@ -235,7 +291,7 @@ class KiboWidget:
         if custom and state == "idle":
             self.avatar.set_state("working")
             if self._last_state != "custom":
-                self.status_label.set_animated(custom)
+                self.status_label.set_animated(custom, mode=custom_anim)
                 self.task_label.hide()
                 self.tool_label.hide()
             else:

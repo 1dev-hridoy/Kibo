@@ -130,6 +130,11 @@ get_kibo() {
 
     INSTALL_DIR="${KIBO_DIR:-$HOME/kibo}"
 
+    if [ -f "./pyproject.toml" ] && grep -q 'name = "kibo"' ./pyproject.toml 2>/dev/null; then
+        INSTALL_DIR="$(pwd)"
+        ok "Using current checkout: ${INSTALL_DIR}"
+    fi
+
     if [ -d "$INSTALL_DIR" ]; then
         ok "Found existing installation: ${INSTALL_DIR}"
         cd "$INSTALL_DIR"

@@ -27,6 +27,10 @@ class MochiAvatar(tk.Canvas):
         self._petted = 0
         self._hearts = []
         self._confetti = []
+        self._fx = {"sparkles": [], "fire": [], "bangs": [],
+                    "drops": [], "notes": [],
+                    "orbit": 0, "rain": 0, "music": 0,
+                    "rainbow": 0, "giggle": 0, "zoom": 0, "talk": 0}
         self._yawn_timer = 0
         self._yawning = False
         self._wave_timer = 30
@@ -55,6 +59,88 @@ class MochiAvatar(tk.Canvas):
             self.mode = mode
             self._yawn_timer = 0
             self._yawning = False
+
+    _FX_ALIASES = [
+        ("fireworks", ("fireworks", "firework", "boom", "cracker", "blast")),
+        ("sleepy", ("sleepy", "sleep", "yawn", "tired", "nap", "bedtime")),
+        ("rainbow", ("rainbow", "rainbow arc", "pride", "colors")),
+        ("heartrain", ("heartrain", "heart rain", "hearts rain", "falling hearts", "rain", "shower")),
+        ("orbit", ("orbit", "satellite", "halo", "circle", "ring around")),
+        ("music", ("music", "sing", "song", "melody", "tune", "humming")),
+        ("sparkle", ("sparkle", "sparkles", "shiny", "twinkle", "glitter", "stars")),
+        ("giggle", ("giggle", "teehee", "laugh", "haha", "funny")),
+        ("zoomies", ("zoomies", "zoom", "run", "dash", "sprint", "fast")),
+        ("celebrate", ("celebrate", "dance", "party", "congrats", "yay", "hooray", "clap")),
+        ("love", ("love", "hearts", "heart", "pet", "pat", "cuddle", "hug", "kiss")),
+        ("happy", ("happy", "joy", "smile", "glad", "cheer")),
+        ("sleepy", ("sleepy", "sleep", "yawn", "tired", "nap", "bedtime")),
+        ("working", ("working", "busy", "think", "focus")),
+        ("talk", ("talk", "talking", "speak", "speaking", "chat",
+                 "chatting", "saying")),
+        ("pixel", ("pixel", "pixel cat")),
+        ("mochi", ("mochi", "normal", "reset")),
+    ]
+
+
+
+    def trigger(self, action):
+        from agent.desktop_widget.pet_anim import start_fx
+        a = (action or "").lower()
+        kind = None
+        for canon, words in self._FX_ALIASES:
+            if any(w in a for w in words):
+                kind = canon
+                break
+        if kind is None:
+            return
+        if kind in ("sparkle", "fireworks", "orbit", "heartrain",
+                    "music", "rainbow", "giggle"):
+            self._petted = 120
+            self.state = "happy"
+            fx = "heartrain" if kind == "heartrain" else kind
+            start_fx(self, fx)
+            return
+        if kind == "zoomies":
+            self._petted = 100
+            self.state = "working"
+            start_fx(self, "zoomies")
+            return
+        if kind == "talk":
+            import re as _re
+            m = _re.search(r"(\d+)", a)
+            frames = int(m.group(1)) if m else 120
+            self._petted = max(self._petted, min(400, frames))
+            self.state = "happy"
+            start_fx(self, f"talk:{frames}")
+            return
+        if kind == "celebrate":
+            self.celebrate()
+            self._petted = 60
+        elif kind == "love":
+            self._petted = 60
+            self.state = "happy"
+            for _ in range(5):
+                self._hearts.append({
+                    "x": random.uniform(10, self.size - 10),
+                    "y": random.uniform(4, self.size * 0.4),
+                    "life": random.randint(20, 35),
+                })
+
+                
+        elif kind == "happy":
+            self._petted = 90
+            self.state = "happy"
+        elif kind == "sleepy":
+            self._petted = 90
+            self.state = "sleepy"
+        elif kind == "working":
+            self._petted = 90
+            self.state = "working"
+        elif kind == "pixel":
+            self.set_mode("pixel")
+        elif kind == "mochi":
+            self.set_mode("mochi")
+            self.state = "idle"
 
     def celebrate(self):
         self._petted = 30
@@ -144,6 +230,8 @@ class MochiAvatar(tk.Canvas):
             c['vx'] *= 0.99
             c['life'] -= 1
         self._confetti = [c for c in self._confetti if c['life'] > 0]
+        from agent.desktop_widget.pet_anim import update_fx
+        update_fx(self)
         self._draw()
         self.after(50, self._animate)
 
@@ -156,6 +244,8 @@ class MochiAvatar(tk.Canvas):
             draw_pixel_cat(self, self.size, self._frame, self._blinking)
         else:
             self._draw_mochi()
+        from agent.desktop_widget.pet_anim import draw_fx
+        draw_fx(self)
 
     def _draw_mochi(self):
         from agent.desktop_widget.mochi_draw import draw_mochi

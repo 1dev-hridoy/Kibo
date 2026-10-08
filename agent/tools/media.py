@@ -24,6 +24,12 @@ def take_camera_photo():
 def text_to_speech(text: str):
     """Speak text aloud using the system speech synthesizer."""
     print(f"[Tool] text_to_speech('{text}')")
+    try:
+        from agent.core.agent_state import set_pet_action
+        frames = max(40, min(400, int(len(text or "") * 1.4)))
+        set_pet_action(f"talk {frames}")
+    except Exception:
+        pass
     return _speak(text)
 
 

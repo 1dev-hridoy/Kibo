@@ -162,6 +162,9 @@ def _handle_callback(bot, call):
         success, msg = switch_model("needle")
         if success:
             reload_backend()
+            from agent.model_manager import get_active_model as _am
+            if _am() != "needle":
+                msg += "\nNote: backend could not load, still on previous model."
         bot.answer_callback_query(call.id, "Switched to Needle")
         bot.edit_message_text(msg, chat_id, call.message.message_id)
         return
@@ -172,6 +175,9 @@ def _handle_callback(bot, call):
         success, msg = switch_model("functiongemma")
         if success:
             reload_backend()
+            from agent.model_manager import get_active_model as _am2
+            if _am2() != "functiongemma":
+                msg += "\nNote: backend could not load, still on previous model."
         bot.answer_callback_query(call.id, "Switched to FunctionGemma")
         bot.edit_message_text(msg, chat_id, call.message.message_id)
         return

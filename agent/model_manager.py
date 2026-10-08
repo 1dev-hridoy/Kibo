@@ -165,8 +165,7 @@ def switch_model(name):
 
     set_active_model(name)
     return True, (
-        f"Switched from {MODELS[old_model]['name']} to {MODELS[name]['name']}.\n"
-        f"Restart required: type 'switch {name}' again or restart the bot."
+        f"Switched from {MODELS[old_model]['name']} to {MODELS[name]['name']}."
     )
 
 
