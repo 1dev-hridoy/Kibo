@@ -25,12 +25,47 @@ def get_agent_state():
     return _agent_state
 
 
-def set_widget_message(message: str, animation: str = "fade",
-                         expires_in: int = 30):
-    """Set a custom message shown in the desktop widget."""
+HISTORY_LIMIT = 30
+
+
+def read_history():
+    """Every widget message ever set, oldest first."""
+    try:
+        import json as _json
+        import os as _os
+        path = _os.path.expanduser("~/.config/kibo/pet_history.json")
+        with open(path) as f:
+            items = _json.load(f)
+        if not isinstance(items, list):
+            return []
+        return [str(i) for i in items if str(i).strip()]
+    except (OSError, ValueError, AttributeError):
+        return []
+
+
+def _append_history(message):
+    try:
+        import json as _json
+        import os as _os
+        path = _os.path.expanduser("~/.config/kibo/pet_history.json")
+        _os.makedirs(_os.path.dirname(path), exist_ok=True)
+        items = read_history()
+        items.append(message[:80])
+        del items[:-HISTORY_LIMIT]
+        tmp = path + ".tmp"
+        with open(tmp, "w") as f:
+            _json.dump(items, f)
+        _os.replace(tmp, path)
+    except OSError:
+        pass
+
+
+def write_pet_message(message: str, animation: str = "fade",
+                        expires_in: int = 0):
+    """Set the current widget message without adding to the history."""
     _agent_state["custom_message"] = message[:80]
     _agent_state["custom_animation"] = animation or "fade"
-    _agent_state["custom_expires_in"] = expires_in or 30
+    _agent_state["custom_expires_in"] = expires_in
     try:
         import json as _json
         import os as _os
@@ -40,10 +75,22 @@ def set_widget_message(message: str, animation: str = "fade",
         with open(tmp, "w") as f:
             _json.dump({"message": message[:80],
                         "animation": animation or "fade",
-                        "expires_in": expires_in or 30}, f)
+                        "expires_in": expires_in}, f)
         _os.replace(tmp, path)
     except OSError:
         pass
+
+
+def set_widget_message(message: str, animation: str = "fade",
+                         expires_in: int = 0):
+    """Set a custom message shown in the desktop widget.
+
+    expires_in=0 means the message persists until explicitly cleared.
+    Transient notifications (reminders) pass a small positive value.
+    Every message is also recorded in the history file.
+    """
+    write_pet_message(message, animation, expires_in)
+    _append_history(message)
 
 
 def read_pet_message_file():
@@ -142,3 +189,36 @@ def read_pet_action_file():
         return data.get("action", ""), int(data.get("seq", 0))
     except (OSError, ValueError, AttributeError):
         return "", 0
+
+
+def read_pet_scroll_file():
+    """Read the pending message-replay command (widget side)."""
+    try:
+        import json as _json
+        import os as _os
+        path = _os.path.expanduser("~/.config/kibo/pet_scroll.json")
+        with open(path) as f:
+            data = _json.load(f)
+        msgs = data.get("messages", [])
+        if not isinstance(msgs, list):
+            msgs = []
+        return int(data.get("seq", 0) or 0), [str(m) for m in msgs]
+    except (OSError, ValueError, AttributeError):
+        return 0, []
+
+
+def start_message_scroll(messages):
+    """Tell the widget to replay these messages, bottom to top."""
+    try:
+        import json as _json
+        import os as _os
+        path = _os.path.expanduser("~/.config/kibo/pet_scroll.json")
+        _os.makedirs(_os.path.dirname(path), exist_ok=True)
+        seq, _ = read_pet_scroll_file()
+        tmp = path + ".tmp"
+        with open(tmp, "w") as f:
+            _json.dump({"seq": seq + 1, "messages": messages}, f)
+        _os.replace(tmp, path)
+        return seq + 1
+    except OSError:
+        return 0

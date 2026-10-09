@@ -7,13 +7,14 @@ class CanvasText:
         self.font = font
         self.row = row
         self.east = east
+        self.wrap = 0
         self._anim_id = None
         while len(self.cv.texts) <= slot:
             self.cv.texts.append({})
         self.cv.texts[slot] = {"text": "", "fill": fill, "font": font,
                                "anchor": "e" if east else "w",
                                "row": row, "east": east,
-                               "x": 0, "y": 0}
+                               "wrap": 0, "x": 0, "y": 0}
 
 
 
@@ -92,6 +93,17 @@ class CanvasText:
             50, lambda: self._color_in(text, target, step + 1))
 
         
+
+    def set_wrap(self, width):
+        self.wrap = width
+        self.cv.texts[self.slot]["wrap"] = width
+
+    def set_style(self, fill=None, font=None):
+        if fill is not None:
+            self.fill = fill
+        if font is not None:
+            self.font = font
+        self._place()
 
     def config(self, **kwargs):
         if "text" in kwargs:

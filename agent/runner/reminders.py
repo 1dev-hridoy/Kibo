@@ -1,7 +1,8 @@
 import os
 import json
 
-from agent.core.scheduler import schedule_task, list_tasks, _start_scheduler
+from agent.core.scheduler import (schedule_task, find_tasks,
+                                  _start_scheduler)
 
 STATE_FILE = os.path.expanduser("~/.config/kibo/reminders.json")
 
@@ -44,9 +45,8 @@ def set_enabled(on: bool):
 def ensure_jobs():
     if not is_enabled():
         return "reminders off"
-    existing = list_tasks()
     for name, spec in DEFAULTS.items():
-        if f"reminder:{name}" not in existing:
+        if not find_tasks(command=f"reminder:{name}"):
             schedule_task(f"reminder:{name}",
                           delay_seconds=spec["delay"],
                           repeat_seconds=spec["every"],

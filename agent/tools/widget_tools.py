@@ -10,7 +10,7 @@ def _set_msg(message, animation="fade"):
     if not message or message.strip() == "":
         clear_widget_message()
         return False
-    set_widget_message(message.strip(), animation)
+    set_widget_message(message.strip(), animation, expires_in=0)
     return True
 
 
@@ -171,3 +171,37 @@ def remind_posture() -> str:
     widget with an up-down posture arrow. Use for posture reminders."""
     print("[Tool] remind_posture()")
     return _remind("Sit tall! Straighten your back.", "fade", "sit straight", "posture")
+
+
+@needle.tool
+
+def pet_show_all() -> str:
+    """Replay every saved widget message one by one in the desktop pet
+    widget, scrolling from bottom to top. Use when the user asks to see
+    all messages, the message history, or 'show all messages'."""
+    print("[Tool] pet_show_all()")
+
+
+    from agent.core.agent_state import read_history, start_message_scroll
+    msgs = read_history()
+    if not msgs:
+        return "No saved widget messages yet."
+    start_message_scroll(msgs)
+    return f"Replaying {len(msgs)} saved message(s) on the widget."
+
+
+@needle.tool
+def pet_message_history() -> str:
+
+    """List every message that has been shown on the widget, oldest first.
+    Use when the user asks what messages were shown or for history."""
+   
+    print("[Tool] pet_message_history()")
+    from agent.core.agent_state import read_history
+    msgs = read_history()
+
+    
+    if not msgs:
+
+        return "No saved widget messages yet."
+    return "\n".join(f"{i + 1}. {m}" for i, m in enumerate(msgs))

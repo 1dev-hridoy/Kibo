@@ -296,6 +296,52 @@ def _get_help_text():
     )
 
 
+def _web_url():
+    try:
+        from agent.config import WEB_SSL, WEB_PORT
+        scheme = "https" if WEB_SSL else "http"
+        return f"{scheme}://127.0.0.1:{WEB_PORT}"
+    except Exception:
+        return ""
+
+
+
+
+def _notify_restart(bot):
+    """Tell the owner/registered chat(s) that the bot restarted and
+    where the web UI is. Clear, so it is easy for both the user and the
+    model to read what happened."""
+    try:
+        from agent.telegram.auth import allowed_ids
+        cids = allowed_ids()
+    except Exception:
+        cids = set()
+    if not cids:
+        return
+    try:
+        from agent.runner.autostart import is_enabled
+        auto = "ON" if is_enabled() else "OFF"
+    except Exception:
+        auto = "?"
+    web = _web_url()
+
+
+
+    msg = (
+        "🟢 <b>Kibo restarted.</b>\n"
+        "• Mode: <code>web + telegram + widget</code>\n"
+        f"• Web UI: <code>{web}</code>\n"
+        f"• Auto-start on boot: <b>{auto}</b>\n\n"
+        "Send a message to get started."
+    )
+    
+    for cid in cids:
+        try:
+            bot.send_message(cid, msg, parse_mode="HTML")
+        except Exception:
+            pass
+
+
 def start_telegram(token: str):
     """Start a Telegram bot listener in a background thread."""
     _acquire_lock()
@@ -309,6 +355,7 @@ def start_telegram(token: str):
 
     bot = telebot.TeleBot(token, parse_mode="HTML")
     startup("Telegram", "Bot active — listening for messages")
+    _notify_restart(bot)
 
 
 

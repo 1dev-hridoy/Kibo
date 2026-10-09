@@ -28,14 +28,12 @@ def on_motion(widget, event):
         return
 
     
+    widget._hovering = True
     if widget._last_seen_state == "idle":
         widget._peek_until = time.time() + 12
-        widget.status_label.config(
-            text=time.strftime("%H:%M"))
-        widget.task_label.config(text=widget._sys_info())
-
-
-
+        widget._render_idle_card(
+            getattr(widget, "_cur_custom", ""),
+            getattr(widget, "_cur_anim", "fade"))
         widget.tool_label.hide()
 
 def on_leave(widget, event):
@@ -46,6 +44,7 @@ def on_leave(widget, event):
 
     except Exception:
         pass
+    widget._hovering = False
     if widget._last_seen_state == "idle":
-        widget._peek_until = min(widget._peek_until, time.time() + 7)
+        widget._peek_until = time.time() + 7
 

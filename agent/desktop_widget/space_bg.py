@@ -43,6 +43,7 @@ class SpaceBackground(tk.Canvas):
         self._nebulae = []
         self._shooting_stars = []
         self.texts = []
+        self.card_w = 0
         self._animate()
 
     def set_state_tint(self, state):
@@ -257,7 +258,8 @@ class SpaceBackground(tk.Canvas):
                 if t.get("east"):
                     tx, ty = max(0, w - 12), 16
                 else:
-                    tx, ty = 142, int(h * t.get("row", 0.3))
+                    ty = int(h * t.get("row", 0.3)) + int(t.get("dy", 0))
+                    tx = 142
                 if t.get("shadow", True):
 
                     
@@ -269,6 +271,6 @@ class SpaceBackground(tk.Canvas):
                 kw = {"anchor": t.get("anchor", "w"),
                       "fill": t.get("fill", "#ffffff"),
                       "font": t.get("font", ("Segoe UI", 10))}
-                if not t.get("east"):
-                    kw["width"] = max(120, w - 180)
+                if t.get("wrap"):
+                    kw["width"] = t["wrap"]
                 self.create_text(tx, ty, text=t["text"], **kw)
