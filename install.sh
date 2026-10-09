@@ -68,10 +68,9 @@ show_banner() {
 
 
 check_system() {
-    step "1/7" "System Check"
+    step "1/9" "System Check"
     line
 
-    # OS
     if [[ "$OSTYPE" == "linux-gnu"* ]]; then
         OS="Linux"
         DISTRO=$(cat /etc/os-release 2>/dev/null | grep ^NAME= | cut -d'"' -f2 || echo "Unknown")
@@ -114,7 +113,6 @@ check_system() {
         ok "RAM: ${RAM}"
     fi
 
-    # Disk
     DISK_FREE=$(df -h . 2>/dev/null | awk 'NR==2{print $4}' || echo "Unknown")
     ok "Free Disk: ${DISK_FREE}"
 }
@@ -125,7 +123,7 @@ check_system() {
 
 
 get_kibo() {
-    step "2/7" "Downloading Kibo"
+    step "2/9" "Downloading Kibo"
     line
 
     INSTALL_DIR="${KIBO_DIR:-$HOME/kibo}"
@@ -159,7 +157,7 @@ get_kibo() {
 
 
 setup_venv() {
-    step "3/7" "Python Environment"
+    step "3/9" "Python Environment"
     line
 
     VENV="$INSTALL_DIR/venv"
@@ -171,7 +169,6 @@ setup_venv() {
         ok "Virtual environment exists"
     fi
 
-    # Upgrade pip
     "$VENV/bin/pip" install --quiet --upgrade pip >/dev/null 2>&1 || true
     ok "pip updated"
 }
@@ -181,7 +178,7 @@ setup_venv() {
 
 
 install_package() {
-    step "4/7" "Installing Kibo"
+    step "4/9" "Installing Kibo"
     line
 
     "$VENV/bin/pip" install --quiet -e . || fail "Installation failed"
@@ -192,7 +189,7 @@ install_package() {
 
 
 install_helpers() {
-    step "5/7" "System Helpers"
+    step "5/9" "System Helpers"
     line
 
     PKG=""
@@ -245,7 +242,7 @@ install_helpers() {
 
 
 select_model() {
-    step "6/7" "AI Model Selection"
+    step "6/9" "AI Model Selection"
     line
 
     printf "\n"
@@ -280,7 +277,7 @@ select_model() {
 
 
 download_models() {
-    step "7/7" "Setting Up Models"
+    step "7/9" "Setting Up Models"
     line
 
     mkdir -p "$HOME/.agent_models/functiongemma"
@@ -345,6 +342,110 @@ download_models() {
 
 
 
+allow_chat() {
+    local chat_id="$1"
+    local label="$2"
+    if KIBO_CHAT_ID="$chat_id" "$VENV/bin/python" -c '
+import os
+from agent.telegram.auth import add_allowed
+add_allowed(int(os.environ["KIBO_CHAT_ID"]))
+' >/dev/null 2>&1; then
+        ok "${label} ${chat_id} allowed"
+    else
+        warn "Could not save ${chat_id} — add it later with /allow <chat_id>"
+    fi
+}
+
+
+setup_telegram() {
+    step "8/9" "Telegram Chats"
+    line
+
+    printf "\n"
+    printf "  ${DIM}Which chats may drive this PC?${NC}\n"
+    printf "  ${DIM}Group ids look like -1001234567890. Your own id comes from /chatid in the bot.${NC}\n"
+    printf "\n"
+
+    local any_id=0
+
+    local group_id=""
+    if [ -t 0 ]; then
+        printf "  ${BOLD}Group chat id${NC} [${DIM}press Enter to skip${NC}${BOLD}]: ${NC}"
+        read -r group_id
+    else
+        read -r group_id || group_id=""
+        group_id="${group_id:-${KIBO_GROUP_ID:-}}"
+    fi
+
+    if printf "%s" "$group_id" | grep -qE '^-?[0-9]+$'; then
+        allow_chat "$group_id" "Group"
+        any_id=1
+    else
+        info "No group id — you can add one later with /allow <chat_id>"
+    fi
+
+    local user_id=""
+    if [ -t 0 ]; then
+        printf "  ${BOLD}Your user id for DM${NC} [${DIM}press Enter to skip${NC}${BOLD}]: ${NC}"
+        read -r user_id
+    else
+        read -r user_id || user_id=""
+        user_id="${user_id:-${KIBO_USER_ID:-}}"
+    fi
+
+    if printf "%s" "$user_id" | grep -qE '^-?[0-9]+$'; then
+        allow_chat "$user_id" "User"
+        any_id=1
+    else
+        info "No user id — the first chat to message the bot becomes the owner"
+    fi
+
+    printf "\n"
+    if [ "$any_id" = "1" ]; then
+        ok "Allowed chats stored in ~/.config/kibo/telegram_allowed.json"
+    else
+        warn "No chats set — message the bot once, it locks you in as owner"
+    fi
+    line
+}
+
+
+write_kibo_cli() {
+    local bin_dir="$HOME/.local/bin"
+    mkdir -p "$bin_dir"
+
+    cat > "$bin_dir/kibo" <<CLIEOF
+#!/usr/bin/env bash
+
+KIBO_HOME="\${KIBO_HOME:-$INSTALL_DIR}"
+export KIBO_HOME
+
+exec "\${KIBO_PY:-$INSTALL_DIR/venv/bin/python}" "$INSTALL_DIR/agent/kibo_cli.py" "\$@"
+CLIEOF
+
+    chmod +x "$bin_dir/kibo"
+
+    if case ":$PATH:" in *":$bin_dir:"*) true ;; *) false ;; esac; then
+        ok "Global command installed: kibo"
+    else
+        for rc in "$HOME/.bashrc" "$HOME/.zshrc" "$HOME/.profile"; do
+            [ -f "$rc" ] || touch "$rc"
+            grep -q '.local/bin' "$rc" 2>/dev/null \
+                || printf '\nexport PATH="$HOME/.local/bin:$PATH"\n' >> "$rc"
+        done
+        ok "Global command installed: kibo (added ${bin_dir} to PATH)"
+    fi
+}
+
+
+install_cli() {
+    step "9/9" "Global Command"
+    line
+    write_kibo_cli
+    line
+}
+
+
 verify_install() {
     printf "\n"
     step "✓" "Verification"
@@ -360,9 +461,16 @@ verify_install() {
     printf "  ${BOLD}${GREEN}╚══════════════════════════════════════════════════╝${NC}\n"
     printf "\n"
     printf "  ${BOLD}Quick Start:${NC}\n\n"
+    printf "    ${CYAN}kibo${NC}                  ${DIM}show every command${NC}\n"
+    printf "    ${CYAN}kibo chat${NC}            ${DIM}terminal chat${NC}\n"
+    printf "    ${CYAN}kibo web${NC}             ${DIM}browser UI (localhost:5000)${NC}\n"
+    printf "    ${CYAN}kibo telegram${NC}       ${DIM}telegram bot${NC}\n"
+    printf "    ${CYAN}kibo status${NC}         ${DIM}what is running${NC}\n"
+    printf "\n"
+    printf "  ${BOLD}Or from the project folder:${NC}\n\n"
     printf "    ${CYAN}cd ${INSTALL_DIR}${NC}\n"
     printf "    ${CYAN}./run.sh${NC}              ${DIM}# terminal chat${NC}\n"
-    printf "    ${CYAN}./run.sh web${NC}          ${DIM}# browser UI (localhost:5000)${NC}\n"
+    printf "    ${CYAN}./run.sh web${NC}          ${DIM}# browser UI${NC}\n"
     printf "    ${CYAN}./run.sh telegram${NC}     ${DIM}# telegram bot${NC}\n"
     printf "\n"
     printf "  ${BOLD}Try these commands:${NC}\n\n"
@@ -389,6 +497,8 @@ main() {
     install_helpers
     select_model
     download_models
+    setup_telegram
+    install_cli
     verify_install
 }
 
