@@ -104,6 +104,19 @@ def _fastpath(text):
         if m and 0 <= int(m.group(1)) <= 100:
             return [("set_screen_brightness", {"level": int(m.group(1))})]
 
+
+    if re.search(r"\b(autostart|auto[-\s]?start|startup|start[-\s]?up)\b"
+                 r"|\b(?:boot)\b.*\b(?:start|run|launch|restart|open|auto)\b"
+                 r"|\b(?:start|run|launch|restart|open|auto)\b.*\b(?:boot|login)\b"
+                 r"|\b(?:start|run|open)\b.*\b(?:with|on)\s+"
+                 r"(?:windows|pc|computer|system|machine)\b", t):
+        if re.search(r"\bstatus\b|\bis\b|\bwhat\b|\bcheck\b|\?", t):
+            return [("autostart_status", {})]
+        if re.search(r"\b(off|disable|disabled|stop|remove|delete|never|"
+                     r"not|don'?t)\b", t):
+            return [("autostart_disable", {})]
+        return [("autostart_enable", {})]
+
     from .fastpath_sys import sys_route
     _r = sys_route(t)
     if _r is not None:

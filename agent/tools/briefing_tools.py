@@ -1,11 +1,22 @@
 import datetime
 import os
 import json
+import time
 
 import needle
 
 STATE_FILE = os.path.expanduser("~/.config/kibo/briefing.json")
 HOUR = 8
+
+
+
+
+STALE_AFTER = 3600
+
+
+
+
+WIDGET_TTL = 120
 
 
 def _load_state():
@@ -29,11 +40,40 @@ def _save_state(state):
 
 
 
+def _today():
+    return datetime.date.today().isoformat()
+
+
+
+def _sent_today(state=None):
+    """True if today's briefing was already delivered."""
+    state = _load_state() if state is None else state
+    return state.get("last_sent") == _today()
+
+
+
+
+def _mark_sent():
+    state = _load_state()
+    state["last_sent"] = _today()
+    _save_state(state)
+
+
 def briefing_state():
 
     return _load_state()
 
 
+
+
+def _next_run_ts(hour):
+    """Absolute timestamp of the next HH:00 slot."""
+    now = datetime.datetime.now()
+    target = now.replace(hour=hour, minute=0, second=0, microsecond=0)
+
+    if target <= now:
+        target += datetime.timedelta(days=1)
+    return target.timestamp()
 
 
 def _next_delay(hour):
@@ -47,17 +87,27 @@ def _next_delay(hour):
 
 
 def ensure_briefing_job():
-    from agent.core.scheduler import schedule_task, list_tasks, _start_scheduler
+    from agent.core.scheduler import (schedule_task, find_tasks,
+                                     reschedule_task, _start_scheduler)
     state = _load_state()
     if not state.get("enabled", True):
         return "briefing off"
 
+    hour = state.get("hour", HOUR)
+    existing = find_tasks(command="briefing:brief_today")
 
-    if "briefing:daily" not in list_tasks():
+    if not existing:
         schedule_task("briefing:brief_today",
-                      delay_seconds=_next_delay(state.get("hour", HOUR)),
+                      delay_seconds=_next_delay(hour),
                       repeat_seconds=86400, label="briefing:daily")
+    elif not _sent_today(state):
 
+
+        
+        for job in existing:
+            nxt = job.get("next_run")
+            if not nxt or nxt < time.time() - STALE_AFTER:
+                reschedule_task("briefing:brief_today", _next_run_ts(hour))
 
     _start_scheduler()
     return "briefing job ensured"
@@ -92,10 +142,12 @@ def brief_today() -> str:
 
     from agent.runner.briefing import build_briefing
     text = build_briefing()
+    _mark_sent()
 
     try:
         from agent.core.agent_state import set_widget_message
-        set_widget_message(text.split("\n")[0][:80], "fade", expires_in=120)
+        set_widget_message(text.split("\n")[0][:80], "fade",
+                           expires_in=WIDGET_TTL)
     except Exception:
         pass
 
@@ -105,6 +157,22 @@ def brief_today() -> str:
         notify("Kibo briefing", text)
     except Exception:
         pass
+    return text
+
+
+def run_scheduled_briefing():
+    """Automatic briefing entry point — delivers at most one per day.
+
+    Called by the scheduler, never by the model. Returns the briefing text,
+    or None when today's briefing has already been delivered.
+    """
+    if _sent_today():
+        print("[Tool] brief_today() already delivered today — skipping")
+        return None
+    text = brief_today()
+
+    
+    _mark_sent()
     return text
 
 
