@@ -62,6 +62,7 @@ Windows (PowerShell): `powershell -ExecutionPolicy Bypass -File install.ps1`
 - **Autostart (optional):** first run asks if Kibo starts with your PC.
 - **Telegram (optional):** `./run.sh telegram` asks for bot token,
   group chat id and user id. More chats: `/allow <chat_id>`.
+  Full guide: [Telegram access](#telegram-access--dm--groups).
 
 ## Use
 
@@ -72,6 +73,77 @@ cd ~/kibo
 ./run.sh telegram     # telegram bot + widget
 ./run.sh all          # web + telegram
 ```
+
+---
+
+## Telegram access — DM + groups
+
+Kibo only answers chats on its allow-list. Any other chat gets
+`🚫 Access denied. This bot is private.` and is ignored.
+
+### How a chat gets allowed
+
+Allowed ids come from two places, checked together:
+
+| Source | Where | Notes |
+|--------|-------|-------|
+| `AGENT_TELEGRAM_ALLOWED_CHATS` | `.env` or your shell | Comma-separated ids, e.g. `123456789,-1001234567890` |
+| `telegram_allowed.json` | `~/.config/kibo/` | Added at runtime by `/allow` — this is what makes a chat an **owner** |
+
+Special case: if **no** chat is allowed yet, the first chat to message the
+bot is auto-claimed as owner (`agent/telegram/auth.py`). Once that list is
+non-empty, nobody else gets in automatically.
+
+### 1. Allow your DM
+
+```bash
+./run.sh telegram          # asks for the token on first run
+```
+
+Put the token in the repo-root `.env` to skip the prompt:
+
+```bash
+AGENT_TELEGRAM_TOKEN=123456:ABC-your-token-from-@BotFather
+```
+
+1. Open a chat with your bot and press **Start**.
+2. If Kibo had no chats allowed yet, that DM is now the owner — done.
+   Otherwise the bot replies `🚫 Access denied.`
+3. In the DM send `/chatid` to get your numeric chat id.
+4. From an **owner** chat, add it: `/allow 123456789`
+
+### 2. Allow a group
+
+```bash
+# 1. add the bot to the group, as an admin
+#    (admin, or BotFather → /setprivacy → Disable, so it sees plain messages)
+# 2. in the group:
+/chatid
+#    → Chat ID: -1001234567890   Type: supergroup
+
+# 3. back in your owner DM:
+/allow -1001234567890
+```
+
+Group ids are always negative. Confirm what is allowed:
+
+```bash
+cat ~/.config/kibo/telegram_allowed.json
+```
+
+### 3. Remove a chat
+
+There is no `/deny` command — delete its id from
+`~/.config/kibo/telegram_allowed.json` (and from
+`AGENT_TELEGRAM_ALLOWED_CHATS` if you put it there), then restart
+`./run.sh telegram`.
+
+### ⚠️ Groups give everyone in them the keys
+
+Allowing a group allows **every member**: the bot treats any plain-text
+message in an allowed chat as a command for Kibo, and replies into the
+group. Only add groups you fully trust — otherwise keep it DM-only, or
+relock the PC between uses (`/lock`, `lock_the_screen`).
 
 ---
 
