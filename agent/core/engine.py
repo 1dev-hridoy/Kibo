@@ -26,6 +26,16 @@ def _init_backend():
     return backend
 
 
+def _ensure_backend():
+    """Lazy-load the model backend on first use."""
+    global _backend
+
+    
+    if _backend is None:
+        _backend = _init_backend()
+    return _backend
+
+
 def _enrich_tool_docs():
     """Append rich usage context to every tool docstring so the small model
     routes user phrasing to the right function."""
@@ -53,15 +63,14 @@ _tool_names = list(_tools)
 
 _engine_lock = threading.Lock()
 
+_backend = None
 
 def reload_backend():
     """Reload the model backend (after switching models)."""
     global _backend
+    _backend = None
     _backend = _init_backend()
     return _backend
-
-
-_backend = _init_backend()
 
 try:
     if not os.environ.get("KIBO_NO_REMINDERS"):
@@ -82,8 +91,8 @@ def _agent_loop(text, max_steps=4):
     the confidence threshold are never executed (tiny models emit
     plausible-looking but spurious calls on small talk)."""
     begin_task(text[:60])
-    _backend.reset()
-    response = _backend.complete(text)
+    _ensure_backend().reset()
+    response = _ensure_backend().complete(text)
     executed, results = [], []
     for _ in range(max_steps):
         calls = response.get("function_calls") or []
@@ -121,8 +130,8 @@ def _agent_loop(text, max_steps=4):
                 results.append(f"Error: {exc}")
             finally:
                 end_tool(name)
-        _backend.reset()
-        response = _backend.complete(json.dumps(results))
+        _ensure_backend().reset()
+        response = _ensure_backend().complete(json.dumps(results))
     return response, executed, results
 
 

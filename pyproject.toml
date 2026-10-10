@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "kibo"
-version = "2.1.1"
+version = "2.2.0"
 description = "Kibo — local AI agent that controls your PC through chat"
 readme = "README.md"
 requires-python = ">=3.10"

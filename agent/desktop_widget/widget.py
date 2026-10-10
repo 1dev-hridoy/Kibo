@@ -9,6 +9,13 @@ from agent.desktop_widget.avatar import MochiAvatar
 from agent.desktop_widget.canvas_text import CanvasText
 
 class KiboWidget:
+    MEDIA_ANIMS = {
+        "youtube": ["ytwave", "ytplay", "ytbars"],
+        "spotify": ["spnote", "spbars", "spwave"],
+        "other": ["music"],
+    }
+    MEDIA_ROTATE_SEC = 3.4
+
     def __init__(self):
         self.cfg = load_config()
         self.api = KiboAPI(self.cfg["api_base"])
@@ -16,6 +23,11 @@ class KiboWidget:
         self._expanded = False
         self._last_state = None
         self._last_pet_seq = 0
+        self._media_tint = None
+        self._media_key = None
+        self._media_anim_idx = 0
+        self._media_anim_at = 0.0
+        self._poll_warned = False
         self._collapse_after = None
         self._last_seen_state = "idle"
         self._peek_until = 0
@@ -137,7 +149,14 @@ class KiboWidget:
     def _start_poller(self):
         def poll():
             while self.running:
-                self._fetch_status()
+                try:
+                    self._fetch_status()
+                except Exception as e:
+
+
+                    if not self._poll_warned:
+                        self._poll_warned = True
+                        print(f"[Widget] poll error: {e}")
                 time.sleep(self.cfg["poll_interval"])
         threading.Thread(target=poll, daemon=True).start()
 
@@ -193,6 +212,9 @@ class KiboWidget:
             self._last_pet_seq = pet_seq
             self.avatar.trigger(pet_action)
 
+        media = status.get("media") or {}
+        self._apply_media(media)
+
         idle_since = status.get("_idle_since", 0)
         recently_active = state != "idle" or (time.time() - idle_since) < 3.0
         if state == "idle" and not custom and not recently_active:
@@ -205,6 +227,9 @@ class KiboWidget:
                 and state == "idle":
             self.avatar.set_mode("pixel")
             self.frame.set_state_tint("pixel")
+        elif self._media_tint is not None and state == "idle":
+            self.avatar.set_mode("mochi")
+            self.frame.set_state_tint(self._media_tint)
         else:
             self.avatar.set_mode("mochi")
             self.frame.set_state_tint(state)
@@ -319,6 +344,55 @@ class KiboWidget:
 
         self._last_state = state
         self._last_seen_state = state
+
+    def _apply_media(self, media):
+        playing = bool(media and media.get("playing"))
+
+
+
+        if not playing:
+            if self._media_tint is not None:
+                self._media_tint = None
+                self._media_key = None
+                self._media_anim_idx = 0
+                self._media_anim_at = 0.0
+                for k in ("ytwave", "ytplay", "ytbars",
+                          "spwave", "spbars", "spnote",
+                          "music", "newtrack"):
+                    self.avatar._fx[k] = 0
+                self.avatar._fx["notes"].clear()
+                self.avatar.trigger("mochi")
+            return
+        
+
+
+
+
+        source = (media or {}).get("source", "other")
+        key = (media or {}).get("track_key", "")
+
+
+
+
+        if self._media_tint != source:
+
+            self._media_tint = source
+            self.frame.set_state_tint(source)
+
+        anims = self.MEDIA_ANIMS.get(source, self.MEDIA_ANIMS["other"])
+        now = time.time()
+
+        if key and key != self._media_key:
+            self._media_key = key
+            self._media_anim_idx = 0
+            self.avatar.trigger("newtrack")
+            self._media_anim_at = now
+
+            
+        elif now - self._media_anim_at >= self.MEDIA_ROTATE_SEC:
+            self.avatar.trigger(anims[self._media_anim_idx % len(anims)])
+            self._media_anim_idx += 1
+            self._media_anim_at = now
 
     def _sys_info(self):
         from agent.desktop_widget.sys_info import sys_info

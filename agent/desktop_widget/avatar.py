@@ -109,6 +109,12 @@ class MochiAvatar:
         self._fx = {"sparkles": [], "fire": [], "bangs": [],
                     "drops": [], "notes": [], "wdrops": [],
                     "orbit": 0, "rain": 0, "music": 0,
+                    "newtrack": 0,
+                    "ytwave": 0, "ytplay": 0, "ytbars": 0,
+                    "spwave": 0, "spbars": 0, "spnote": 0,
+                    "flip": 0, "flip_dir": 1,
+                    "coinflip": 0, "coin_face": "heads",
+                    "coin_spin": 0, "coin_spark": False,
                     "rainbow": 0, "giggle": 0, "zoom": 0, "talk": 0,
                     "water": 0, "grass": 0, "stretch": 0,
                     "eyes": 0, "posture": 0}
@@ -152,6 +158,19 @@ class MochiAvatar:
         ("heartrain", ("heartrain", "heart rain", "hearts rain", "falling hearts", "rain", "shower")),
         ("orbit", ("orbit", "satellite", "halo", "circle", "ring around")),
         ("music", ("music", "sing", "song", "melody", "tune", "humming")),
+        ("ytwave", ("ytwave", "youtube wave", "red wave")),
+        ("ytplay", ("ytplay", "play button", "watch")),
+        ("ytbars", ("ytbars", "youtube bars", "red bars")),
+        ("spnote", ("spnote", "spotify notes", "green notes")),
+        ("spbars", ("spbars", "spotify bars", "green bars")),
+        ("spwave", ("spwave", "spotify rings", "green rings")),
+        ("coinflip", ("coinflip", "coin flip", "flip a coin",
+                      "toss a coin", "heads or tails", "coin")),
+        ("flip", ("flip", "flip the pet", "backflip", "frontflip",
+                  "somersault", "tumble", "airflip", "spin me")),
+
+        ("newtrack", ("newtrack", "new track", "new song",
+                      "track changed", "now playing")),
         ("sparkle", ("sparkle", "sparkles", "shiny", "twinkle", "glitter", "stars")),
         ("giggle", ("giggle", "teehee", "laugh", "haha", "funny")),
         ("zoomies", ("zoomies", "zoom", "run", "dash", "sprint", "fast")),
@@ -193,7 +212,11 @@ class MochiAvatar:
         if kind is None:
             return
         if kind in ("sparkle", "fireworks", "orbit", "heartrain",
-                    "music", "rainbow", "giggle"):
+                    "music", "newtrack",
+                    "ytwave", "ytplay", "ytbars",
+                    "spwave", "spbars", "spnote",
+                    "flip", "coinflip",
+                    "rainbow", "giggle"):
             self._petted = 120
             self.state = "happy"
             fx = "heartrain" if kind == "heartrain" else kind
@@ -231,7 +254,8 @@ class MochiAvatar:
             self._showcase = ["sparkle", "music", "giggle", "orbit",
                               "rainbow", "fireworks", "heartrain",
                               "zoomies", "dance", "love", "happy",
-                              "stretch", "water", "grass", "sleepy"]
+                              "stretch", "water", "grass", "sleepy",
+                              "flip", "coinflip"]
             return
         if kind == "celebrate":
             self.celebrate()
@@ -420,7 +444,11 @@ class MochiAvatar:
                 or fx["wdrops"] or fx["bangs"]:
             return True
         return any(fx.get(k, 0) > 0 for k in
-                   ("orbit", "rain", "music", "rainbow", "giggle", "zoom",
+                   ("orbit", "rain", "music", "newtrack",
+                    "ytwave", "ytplay", "ytbars",
+                    "spwave", "spbars", "spnote",
+                    "flip", "coinflip",
+                    "rainbow", "giggle", "zoom",
                     "talk", "water", "grass", "stretch", "eyes", "posture"))
 
 
@@ -430,14 +458,6 @@ class MochiAvatar:
             if self._petted == 0 and not self._fx_busy():
                 self.trigger(self._showcase.pop(0))
             return
-        if self.state == "idle" and self._base_state == "idle" \
-                and self._petted == 0 and not self._fx_busy():
-            self._idle_anim_in -= 1
-            if self._idle_anim_in <= 0:
-                self.trigger(random.choice(
-                    ("sparkle", "music", "giggle", "orbit",
-                     "rainbow", "happy", "love")))
-                self._idle_anim_in = random.randint(300, 600)
 
 
     def draw(self, cv):

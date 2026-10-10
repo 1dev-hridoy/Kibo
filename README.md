@@ -9,11 +9,11 @@
 
 <p align="center">
   <b>Your PC, controlled by chat.</b><br>
-  130 tools • Local AI • No cloud
+  140 tools • Local AI • No cloud
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-2.1.1-blue" alt="Version">
+  <img src="https://img.shields.io/badge/version-2.2.0-blue" alt="Version">
   <img src="https://img.shields.io/badge/python-3.10+-green" alt="Python">
   <img src="https://img.shields.io/badge/license-MIT-green" alt="License">
   <img src="https://img.shields.io/badge/tools-130-purple" alt="Tools">
@@ -28,7 +28,7 @@ natural language. **No cloud. No API keys. Your data stays private.**
 
 ```
 Loading Needle 2 (14MB)...
-Agent ready — 130 tools registered.
+Agent ready — 140 tools registered.
 You: set volume to 80
 Kibo: Volume set to 80. ✓
 ```
@@ -85,10 +85,10 @@ Kibo only answers chats on its allow-list. Any other chat gets
 
 Allowed ids come from two places, checked together:
 
-| Source | Where | Notes |
-|--------|-------|-------|
-| `AGENT_TELEGRAM_ALLOWED_CHATS` | `.env` or your shell | Comma-separated ids, e.g. `123456789,-1001234567890` |
-| `telegram_allowed.json` | `~/.config/kibo/` | Added at runtime by `/allow` — this is what makes a chat an **owner** |
+| Source                         | Where                | Notes                                                                 |
+| ------------------------------ | -------------------- | --------------------------------------------------------------------- |
+| `AGENT_TELEGRAM_ALLOWED_CHATS` | `.env` or your shell | Comma-separated ids, e.g. `123456789,-1001234567890`                  |
+| `telegram_allowed.json`        | `~/.config/kibo/`    | Added at runtime by `/allow` — this is what makes a chat an **owner** |
 
 Special case: if **no** chat is allowed yet, the first chat to message the
 bot is auto-claimed as owner (`agent/telegram/auth.py`). Once that list is
@@ -147,92 +147,107 @@ relock the PC between uses (`/lock`, `lock_the_screen`).
 
 ---
 
-## All tools (130) with examples
+## All tools (140) with examples
 
 ### 🖥️ System
 
-| Say | Tool |
-|-----|------|
-| `show a notification saying done` | `show_notification` |
-| `check battery` | `get_battery_status` |
-| `set brightness to 80` | `set_screen_brightness` |
-| `volume 80` / `mute` | `set_volume` |
-| `lock the screen` | `lock_the_screen` |
-| `cpu and ram usage` | `get_system_stats` |
-| `device info` | `get_device_info` |
-| `take a screenshot` | `take_screenshot_now` |
-| `shutdown the pc` | `power_control` |
-| `check system health` | `check_system_health` |
-| `show disk usage` | `get_disk_usage` |
-| `show temperature` | `get_temperature` |
-| `view system logs` | `view_system_logs` |
-| `toast hello` | `show_toast` |
+| Say                               | Tool                    |
+| --------------------------------- | ----------------------- |
+| `show a notification saying done` | `show_notification`     |
+| `check battery`                   | `get_battery_status`    |
+| `set brightness to 80`            | `set_screen_brightness` |
+| `volume 80` / `mute`              | `set_volume`            |
+| `lock the screen`                 | `lock_the_screen`       |
+| `cpu and ram usage`               | `get_system_stats`      |
+| `device info`                     | `get_device_info`       |
+| `take a screenshot`               | `take_screenshot_now`   |
+| `shutdown the pc`                 | `power_control`         |
+| `check system health`             | `check_system_health`   |
+| `show disk usage`                 | `get_disk_usage`        |
+| `show temperature`                | `get_temperature`       |
+| `view system logs`                | `view_system_logs`      |
+| `toast hello`                     | `show_toast`            |
 
 ### 📁 Files & apps
 
-| Say | Tool |
-|-----|------|
-| `list files in downloads` | `list_files` |
-| `list installed apps` | `list_installed_apps` |
-| `open firefox` / `open youtube` | `open_app` |
-| `create file notes.txt with hi` | `create_file` |
-| `read file /etc/hostname` | `read_file` |
-| `show running processes` | `get_running_processes` |
-| `install package htop` | `install_package` |
-| `run ls -la` | `remote_terminal` |
-| `launch firefox smartly` | `launch_app_smart` |
-| `copy hello to clipboard` | `set_clipboard` / `copy_text_to_clipboard` |
+| Say                             | Tool                                       |
+| ------------------------------- | ------------------------------------------ |
+| `list files in downloads`       | `list_files`                               |
+| `list installed apps`           | `list_installed_apps`                      |
+| `open firefox` / `open youtube` | `open_app`                                 |
+| `create file notes.txt with hi` | `create_file`                              |
+| `read file /etc/hostname`       | `read_file`                                |
+| `show running processes`        | `get_running_processes`                    |
+| `install package htop`          | `install_package`                          |
+| `run ls -la`                    | `remote_terminal`                          |
+| `launch firefox smartly`        | `launch_app_smart`                         |
+| `copy hello to clipboard`       | `set_clipboard` / `copy_text_to_clipboard` |
 
 ### 🌐 Network & security
 
-| Say | Tool |
-|-----|------|
-| `wifi info` / `scan wifi` | `get_wifi_info` / `scan_wifi_networks` |
-| `scan my network` | `local_network_scan` |
-| `scan ports on 192.168.0.1` | `local_port_scan` |
-| `check for arp spoofing` | `detect_arp_spoofing` |
-| `audit my vpn` | `audit_vpn_connection` |
-| `audit website security example.com` | `audit_website_security` |
-| `dns lookup example.com` | `dns_lookup` |
-| `whois example.com` | `whois_lookup` |
-| `where is 8.8.8.8` | `ip_geolocation_lookup` |
+| Say                                  | Tool                                          |
+| ------------------------------------ | --------------------------------------------- |
+| `wifi info` / `scan wifi`            | `get_wifi_info` / `scan_wifi_networks`        |
+| `scan my network`                    | `local_network_scan`                          |
+| `scan ports on 192.168.0.1`          | `local_port_scan`                             |
+| `check for arp spoofing`             | `detect_arp_spoofing`                         |
+| `audit my vpn`                       | `audit_vpn_connection`                        |
+| `audit website security example.com` | `audit_website_security`                      |
+| `dns lookup example.com`             | `dns_lookup`                                  |
+| `whois example.com`                  | `whois_lookup`                                |
+| `where is 8.8.8.8`                   | `ip_geolocation_lookup`                       |
 | `hash this file` / `decode this jwt` | `generate_file_checksum` / `decode_jwt_token` |
 
 ### 🎙️ Media & voice
 
-| Say | Tool |
-|-----|------|
-| `play some music` | `play_media` |
-| `take a photo` | `take_camera_photo` |
-| `say hello out loud` | `text_to_speech` |
+| Say                            | Tool                   |
+| ------------------------------ | ---------------------- |
+| `play some music`              | `play_media`           |
+| `take a photo`                 | `take_camera_photo`    |
+| `say hello out loud`           | `text_to_speech`       |
 | `start listening for hey kibo` | `voice_start_listener` |
-| `listen now` | `voice_listen_now` |
+| `listen now`                   | `voice_listen_now`     |
 
 ### 🐾 Widget, pet & reminders
 
-| Say | Tool |
-|-----|------|
-| `show hi on the widget` | `widget_set_message` |
-| `clear widget` | `widget_clear` |
-| `pet show good morning` | `pet_show` / `pet_send` / `pet_love` |
-| `dance with kibo` | `pet_animate` |
-| `showcase` | all 15 animations, one by one |
-| `animations` | animation preview list |
-| `drink water` | `remind_water` (+ sound) |
-| `touch grass` | `remind_grass` (+ sound) |
-| `stretch` / `rest my eyes` / `sit straight` | `remind_stretch` / `remind_eyes` / `remind_posture` |
-| `reminders off` | `reminders_on` / `reminders_off` / `reminders_status` |
+| Say                                         | Tool                                                  |
+| ------------------------------------------- | ----------------------------------------------------- |
+| `show hi on the widget`                     | `widget_set_message`                                  |
+| `clear widget`                              | `widget_clear`                                        |
+| `pet show good morning`                     | `pet_show` / `pet_send` / `pet_love`                  |
+| `dance with kibo`                           | `pet_animate`                                         |
+| `kibo flip` / `backflip`                    | `pet_animate` (real tumble)                           |
+| `coin flip` / `toss a coin`                 | `pet_animate` (coin lands heads/tails)                |
+| `showcase`                                  | all 15 animations, one by one                         |
+| `animations`                                | animation preview list                                |
+| `drink water`                               | `remind_water` (+ sound)                              |
+| `touch grass`                               | `remind_grass` (+ sound)                              |
+| `stretch` / `rest my eyes` / `sit straight` | `remind_stretch` / `remind_eyes` / `remind_posture`   |
+| `reminders off`                             | `reminders_on` / `reminders_off` / `reminders_status` |
+
+### 🧮 Everyday utilities
+
+| Say                                            | Tool                                                            |
+| ---------------------------------------------- | --------------------------------------------------------------- |
+| `convert 90 c to f` / `convert 5 miles to km`  | `convert_units` (length, mass, temp, volume, speed, data, time) |
+| `calculate 18*1.2 + 5`                         | `calculate` (safe maths evaluator)                              |
+| `make me a 24 character password`              | `generate_password` (crypto-secure)                             |
+| `word count in "..."`                          | `text_stats` (+ reading time)                                   |
+| `convert "hello" to base64` / `reverse "text"` | `transform_text` (case, encode, dedupe)                         |
+| `replace old with new in config.txt`           | `find_replace_in_file` (supports dry run)                       |
+| `find large files in ~/Downloads`              | `find_large_files`                                              |
+| `how long until 2026-12-25`                    | `time_until`                                                    |
 
 ### ☀️ Briefing & automation
 
-| Say | Tool |
-|-----|------|
-| `brief` / `brief the day` | `brief_today` (weather, battery, agenda) |
-| `briefing off` | `briefing_on` / `briefing_off` |
-| `record a macro` / `replay backup` | `start_macro_recording` / `replay_macro` |
-| `schedule ...` | `schedule_agent_task` / `schedule_shell_task` |
-| `switch gemma` / `models` | model switching |
-| `start kibo on boot` | `autostart_enable` / `autostart_disable` |
+| Say                                | Tool                                          |
+| ---------------------------------- | --------------------------------------------- |
+| `brief` / `brief the day`          | `brief_today` (weather, battery, agenda)      |
+| `briefing off`                     | `briefing_on` / `briefing_off`                |
+| `record a macro` / `replay backup` | `start_macro_recording` / `replay_macro`      |
+| `schedule ...`                     | `schedule_agent_task` / `schedule_shell_task` |
+| `switch gemma` / `models`          | model switching                               |
+| `start kibo on boot`               | `autostart_enable` / `autostart_disable`      |
 
 Plus: window control (`focus_app`, `minimize_app`…), clipboard sync,
 alerts, multi-PC (`list_remote_pcs`, `execute_on_remote_pc`), TTS/STT

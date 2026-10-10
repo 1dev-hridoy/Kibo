@@ -92,6 +92,7 @@ def pet_animate(action: str) -> str:
     yawn, working, busy, pixel, mochi, reset, sparkle, twinkle,
     fireworks, boom, orbit, heartrain, shower, music, sing,
     rainbow, giggle, laugh, zoomies, dash, annoyed, poke, dizzy,
+    flip, backflip, somersault, coinflip, coin flip, toss a coin,
     showcase, parade, play all.
     Example: 'dance with kibo', 'make the pet sleep',
     'pet celebrates', 'fireworks please', 'sing a song'."""

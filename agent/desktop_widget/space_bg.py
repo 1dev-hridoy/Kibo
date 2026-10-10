@@ -10,6 +10,9 @@ class SpaceBackground(tk.Canvas):
         "approval": (26, 10, 22),
         "happy":    (22, 14, 28),
         "pixel":    (5, 16, 10),
+        "youtube":  (64, 10, 10),
+        "spotify":  (29, 185, 84),
+        "other":    (10, 12, 28),
     }
 
     MID_STAR_COLORS = ("#ffffff", "#fff3b0", "#b4befe", "#f5c2e7", "#89dceb")

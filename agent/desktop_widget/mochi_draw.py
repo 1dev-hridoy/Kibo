@@ -33,6 +33,24 @@ def draw_mochi(av):
         cx = cx + math.sin(av._frame * 0.8) * 4
     cy_b = cy + bounce
 
+    flip_scale = 1.0
+    if av._fx.get("flip", 0) > 0:
+        prog = 1.0 - av._fx["flip"] / 100.0
+        ang = prog * math.pi * float(av._fx.get("flip_dir", 1))
+        flip_scale = math.cos(ang)
+
+
+
+        if flip_scale > 0:
+            flip_scale = flip_scale * 0.25 + 0.75
+
+
+        else:
+            flip_scale = abs(flip_scale)
+        rx *= max(0.08, flip_scale)
+        lift = abs(math.sin(prog * math.pi)) * s * 0.42
+        cy_b -= lift
+
 
 
 
@@ -106,6 +124,13 @@ def draw_mochi(av):
 
 
     sh = s * 0.20 - bounce * 0.5
+    sh_lift = 1.0
+    if av._fx.get("flip", 0) > 0:
+        prog = 1.0 - av._fx["flip"] / 100.0
+
+        
+        sh_lift = 1.0 - abs(math.sin(prog * math.pi)) * 0.62
+    sh *= sh_lift
     av.create_oval(cx - sh * 1.4, s - 4, cx + sh * 1.4, s - 2,
                    fill=shade(color, -0.55), outline="",
                    stipple="gray25")
