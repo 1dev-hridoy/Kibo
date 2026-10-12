@@ -6,6 +6,8 @@ import os
 import sys
 import json
 import secrets
+import threading
+import time
 
 from flask import Flask, request, jsonify, render_template, render_template_string, send_file, session, redirect, url_for
 from flask_socketio import SocketIO, emit
@@ -13,6 +15,44 @@ from agent.core import ask
 from agent.config import WEB_HOST, WEB_PORT
 from agent.tools import ALL_TOOLS
 from agent.logs import user_input, ai_response, error, startup
+
+_media_state = {"playing": False}
+_media_lock = threading.Lock()
+
+
+def _refresh_media():
+    """Keep the media state fresh for /api/status and the desktop widget."""
+    from agent.runner.media_watch import scan
+    while True:
+        try:
+            state = scan()
+
+
+            if state:
+                with _media_lock:
+                    _media_state.clear()
+                    _media_state.update(state)
+
+                    
+            else:
+                with _media_lock:
+                    _media_state.clear()
+                    _media_state.update({"playing": False})
+        except Exception:
+            pass
+        time.sleep(2.0)
+
+
+
+
+
+def _start_media_watcher():
+    t = threading.Thread(target=_refresh_media, daemon=True)
+    t.start()
+    return t
+
+
+_start_media_watcher()
 
 _template_dir = os.path.dirname(os.path.abspath(__file__))
 
@@ -202,7 +242,11 @@ from agent.core.agent_state import get_agent_state, update_agent_state
 @app.route("/api/status")
 def agent_status():
     """Return current agent state for desktop widget."""
-    return jsonify(get_agent_state())
+    with _media_lock:
+        media = dict(_media_state)
+    state = get_agent_state()
+    state["media"] = media
+    return jsonify(state)
 
 
 @app.route("/api/history")

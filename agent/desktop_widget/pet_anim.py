@@ -31,6 +31,35 @@ def start_fx(av, kind):
         av._fx["rain"] = 100
     elif kind == "music":
         av._fx["music"] = 100
+    elif kind == "newtrack":
+        av._fx["newtrack"] = 90
+        for _ in range(18):
+            ang = random.uniform(0, math.pi * 2)
+            sp = random.uniform(2.0, 5.0)
+            av._fx["sparkles"].append({
+
+
+                "x": s // 2, "y": s // 2,
+                "vx": math.cos(ang) * sp, "vy": math.sin(ang) * sp - 1.5,
+                "life": random.randint(35, 65), "max": 65,
+            })
+
+
+
+    elif kind in ("ytwave", "ytplay", "ytbars",
+                  "spwave", "spbars", "spnote"):
+        av._fx[kind] = 80
+    elif kind == "flip":
+
+
+        av._fx["flip"] = 100
+        av._fx["flip_dir"] = random.choice((-1, 1))
+    elif kind == "coinflip":
+        av._fx["coinflip"] = 130
+
+
+        av._fx["coin_face"] = random.choice(("heads", "tails"))
+        av._fx["coin_spin"] = 0
     elif kind == "rainbow":
         av._fx["rainbow"] = 110
     elif kind == "giggle":
@@ -79,7 +108,10 @@ def update_fx(av):
         p["life"] -= 1
     fx["fire"] = [p for p in fx["fire"] if p["life"] > 0]
     for key in ("orbit", "rain", "music", "rainbow", "giggle", "zoom",
-                "talk", "water", "grass", "stretch", "eyes", "posture"):
+                "talk", "water", "grass", "stretch", "eyes", "posture",
+                "newtrack", "ytwave", "ytplay", "ytbars",
+                "spwave", "spbars", "spnote",
+                "flip", "coinflip"):
         if fx.get(key, 0) > 0:
             fx[key] -= 1
 
@@ -95,11 +127,19 @@ def update_fx(av):
     for d in fx["drops"]:
         d["y"] += d["vy"]; d["life"] -= 1
     fx["drops"] = [d for d in fx["drops"] if d["life"] > 0 and d["y"] < s + 8]
-    if fx["music"] > 0 and av._frame % 10 == 0:
+    if fx.get("spnote", 0) > 0 and av._frame % 9 == 0:
+        fx["notes"].append({
+            "x": s // 2 + random.uniform(-16, 16),
+            "y": s // 2 - s * 0.3,
+            "life": 50, "size": random.randint(9, 14),
+            "color": "#1db954",
+        })
+    if fx.get("music", 0) > 0 and av._frame % 10 == 0:
         fx["notes"].append({
             "x": s // 2 + random.uniform(-14, 14),
             "y": s // 2 - s * 0.3,
             "life": 45, "size": random.randint(8, 13),
+            "color": "#89dceb",
         })
     for n in fx["notes"]:
         n["y"] -= 1.1; n["life"] -= 1
@@ -155,7 +195,8 @@ def draw_fx(av):
         av.create_text(d["x"], d["y"], text="♥", fill="#ff8fab",
                        font=("Segoe UI", d["size"]))
     for n in fx["notes"]:
-        av.create_text(n["x"], n["y"], text="♪", fill="#89dceb",
+        av.create_text(n["x"], n["y"], text="♪",
+                       fill=n.get("color", "#89dceb"),
                        font=("Segoe UI", n["size"]))
     if fx.get("rainbow", 0) > 0:
         cols = ("#f38ba8", "#fab387", "#f9e2af", "#a6e3a1",
@@ -255,6 +296,172 @@ def draw_fx(av):
                           px, cy + 24 + bob, fill="#f38ba8", outline="")
         av.create_text(cx, 10, text="sit tall!",
                        fill="#f38ba8", font=("Segoe UI", 7, "bold"))
+    if fx.get("newtrack", 0) > 0:
+        t = fx["newtrack"] / 90.0
+        alpha = min(1.0, t * 2)
+
+
+        sz = int(10 + (1.0 - t) * 6)
+        av.create_text(cx, cy - body_r - 18, text="♪ NEW ♪",
+                       fill="#f9e2af", font=("Segoe UI", sz, "bold"))
+        
+        for i in range(3):
+            ang = av._frame * 0.15 + i * math.pi * 2 / 3
+
+
+            r = body_r + 14 + (1.0 - t) * 20
+            x = cx + math.cos(ang) * r
+            y = cy + math.sin(ang) * r * 0.5
+            av.create_text(x, y, text="✦", fill="#f5c2e7",
+                           font=("Segoe UI", 8))
+
+            
+    if fx.get("ytwave", 0) > 0:
+        n = 14
+        for i in range(n):
+
+
+            ang = math.pi * 2 * i / n
+            wob = math.sin(av._frame * 0.18 + i * 1.1) * 6
+            r = body_r + 10 + wob
+
+
+            x1 = cx + math.cos(ang) * r
+            y1 = cy + math.sin(ang) * r * 0.6
+            ang2 = math.pi * 2 * (i + 1) / n
+            r2 = body_r + 10 + math.sin(av._frame * 0.18 + (i + 1) * 1.1) * 6
+
+
+            x2 = cx + math.cos(ang2) * r2
+            y2 = cy + math.sin(ang2) * r2 * 0.6
+            av.create_line(x1, y1, x2, y2, fill="#ff4d4d", width=2)
+
+    if fx.get("ytplay", 0) > 0:
+        s2 = 11 + math.sin(av._frame * 0.22) * 2.5
+        y = cy - body_r - 20
+
+
+        av.create_polygon(cx - s2, y - s2, cx - s2, y + s2,
+                          cx + s2, y, fill="#ff4d4d", outline="")
+
+
+    if fx.get("ytbars", 0) > 0:
+        for i in range(9):
+            h = 3 + abs(math.sin(av._frame * 0.28 + i * 0.85)) * 15
+            x = cx - 36 + i * 9
+            av.create_rectangle(x, s - 6 - h, x + 6, s - 6,
+                                fill="#ff4d4d", outline="")
+
+
+
+
+    if fx.get("spwave", 0) > 0:
+        r = body_r + 6 + (av._frame % 45) * 0.8
+        av.create_oval(cx - r, cy - r, cx + r, cy + r,
+                       outline="#1db954", width=2)
+
+
+    if fx.get("spbars", 0) > 0:
+        for i in range(7):
+            h = 3 + abs(math.sin(av._frame * 0.32 + i * 0.9)) * 13
+            x = cx - 30 + i * 10
+            av.create_rectangle(x, s - 6 - h, x + 7, s - 6,
+                                fill="#1db954", outline="")
+
+
+
+    if fx.get("flip", 0) > 0:
+        t = fx["flip"] / 100.0
+        d = fx.get("flip_dir", 1)
+        prog = 1.0 - t
+        for i in range(3):
+            off = i * 5
+            lift = abs(math.sin(prog * math.pi)) * (10 - i * 2)
+
+
+            x0 = cx - body_r - 12 - off
+            y0 = cy - lift
+            x1 = x0 + (6 + off) * d
+            y1 = cy - lift
+            av.create_line(x0, y0, x1, y1,
+                           fill="#cba6f7", width=2, capstyle="round")
+        ring = body_r + 12 + abs(math.sin(prog * math.pi)) * 8
+        av.create_arc(cx - ring, cy - ring, cx + ring, cy + ring,
+                      
+
+
+
+                      start=200 * d, extent=140, style="arc",
+                      outline="#f5c2e7", width=2)
+        av.create_text(cx, cy - body_r - 14, text="↻",
+                       fill="#cba6f7", font=("Segoe UI", 13, "bold"))
+
+    if fx.get("coinflip", 0) > 0:
+        total = 130
+        prog = 1.0 - fx["coinflip"] / total
+        coin_r = 12
+        lift = 16
+
+
+        rest_y = cy - body_r - coin_r - 2
+        rest_y = max(coin_r + 3 + lift, min(rest_y, s - coin_r - 18))
+        arc = abs(math.sin(prog * math.pi))
+        coin_y = rest_y - arc * lift
+        coin_x = cx + int(math.sin(prog * math.pi * 2) * 6)
+        spinning = prog < 0.72
+
+
+
+
+
+
+        if spinning:
+            spin = (av._frame % 7) / 7.0
+            wdt = max(2, int(coin_r * abs(math.cos(spin * math.pi))))
+            av.create_oval(coin_x - wdt, coin_y - coin_r,
+                           coin_x + wdt, coin_y + coin_r,
+                           fill="#f9e2af", outline="#c9a227", width=2)
+            av.create_line(coin_x - wdt - 5, coin_y - 4,
+                           coin_x - wdt - 9, coin_y - 7,
+                           fill="#fff3b0", width=2, capstyle="round")
+            av.create_line(coin_x + wdt + 5, coin_y - 4,
+                           coin_x + wdt + 9, coin_y - 7,
+                           fill="#fff3b0", width=2, capstyle="round")
+            
+
+
+
+        else:
+            face = fx.get("coin_face", "heads")
+            av.create_oval(coin_x - coin_r - 2, coin_y - coin_r - 2,
+                           coin_x + coin_r + 2, coin_y + coin_r + 2,
+                           fill="#c9a227", outline="")
+            av.create_oval(coin_x - coin_r, coin_y - coin_r,
+                           coin_x + coin_r, coin_y + coin_r,
+                           fill="#f9e2af", outline="#c9a227", width=2)
+            av.create_text(coin_x, coin_y,
+                           text="★" if face == "heads" else "✦",
+                           fill="#8a6d3b", font=("Segoe UI", 13, "bold"))
+            label_y = min(coin_y + coin_r + 12, s - 7)
+            av.create_text(coin_x, label_y, text=face.upper(),
+
+
+                           
+                           fill="#f9e2af", font=("Segoe UI", 9, "bold"))
+            if not fx.get("coin_spark", False):
+                fx["coin_spark"] = True
+                for _ in range(14):
+                    ang = random.uniform(0, math.pi * 2)
+                    sp = random.uniform(1.5, 4.0)
+                    fx["sparkles"].append({
+                        "x": coin_x, "y": coin_y,
+                        "vx": math.cos(ang) * sp,
+                        "vy": math.sin(ang) * sp,
+                        "life": random.randint(20, 38), "max": 38,
+                    })
+        if prog > 0.9 and fx.get("coinflip", 0) <= 2:
+            fx["coin_spark"] = False
+
     if fx.get("talk", 0) > 0:
         flap = abs(math.sin(av._frame * 0.55))
         mh = 2 + int(flap * 6)

@@ -51,6 +51,12 @@ def _fastpath(text):
         return _r
 
 
+    from .fastpath_util import util_route
+    _r = util_route(t)
+    if _r is not None:
+        return _r
+
+
     # ═══════════════════════════════════════════════════════════════════
     # VOLUME
     # ═══════════════════════════════════════════════════════════════════
@@ -327,8 +333,13 @@ def _fastpath(text):
                 r"cat|head|tail|wc|sort|grep|find|mkdir|rm|cp|mv|chmod|chown|which|"
                 r"tar|zip|unzip|curl|wget|ssh|git|docker|systemctl|journalctl)\b", t):
         return [("remote_terminal", {"command": t})]
-    # Programming tools
-    if re.match(r"^(python|python3|pip|node|npm|yarn|cargo|gcc|make|cmake)\s+", t):
+
+
+
+    if re.match(r"^(python|python3|pip|node|npm|yarn|cargo|gcc)\s+", t):
+        return [("remote_terminal", {"command": t})]
+    if re.match(r"^(make|cmake)\s+(-{1,2}[\w-]+|all|clean|install|build|test|"
+                r"check|dist|help)\b", t):
         return [("remote_terminal", {"command": t})]
 
     # ═══════════════════════════════════════════════════════════════════

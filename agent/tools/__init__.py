@@ -84,6 +84,10 @@ from agent.tools.widget_tools import (
 from agent.tools.autostart_tools import (
     autostart_enable, autostart_disable, autostart_status,
 )
+from agent.tools.utility_tools import (
+    calculate, convert_units, generate_password, text_stats,
+    transform_text, find_replace_in_file, find_large_files, time_until,
+)
 
 ALL_TOOLS = [
     # System (10)
@@ -154,4 +158,7 @@ ALL_TOOLS = [
     reminders_on, reminders_off, reminders_status,
     brief_today, briefing_on, briefing_off, briefing_status,
     autostart_enable, autostart_disable, autostart_status,
+  
+    calculate, convert_units, generate_password, text_stats,
+    transform_text, find_replace_in_file, find_large_files, time_until,
 ]

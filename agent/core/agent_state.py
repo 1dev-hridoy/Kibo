@@ -17,7 +17,8 @@ _agent_state = {
     "custom_expires_in": 0,
     "pet_action": "",
     "pet_seq": 0,
-    "_idle_since": 0.0,        
+    "media": {"playing": False},
+    "_idle_since": 0.0,
 }
 
 

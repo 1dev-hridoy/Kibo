@@ -15,7 +15,10 @@ def pet_route(t):
                 "heartrain", "heart rain", "hearts rain", "falling hearts",
                 "shower", "love", "hearts", "heart", "hug", "kiss", "cuddle",
                 "sleepy", "yawn", "nap", "bedtime", "go to sleep",
-                "mochi", "pixel", "showcase", "parade", "play all", "show all")
+                "mochi", "pixel", "showcase", "parade", "play all", "show all",
+                "flip", "backflip", "frontflip", "somersault", "tumble",
+                "airflip", "spin me", "coinflip", "coin flip", "flip a coin",
+                "toss a coin", "heads or tails", "coin")
 
 
     
@@ -26,8 +29,11 @@ def pet_route(t):
                      "giggle", "teehee", "laugh", "dance", "celebrate",
                      "party", "yay", "hooray", "zoomies", "zoom",
                      "heartrain", "heart rain", "shower", "love", "hearts",
-                     "hug", "kiss", "cuddle", "sleepy", "yawn", "nap",
-                     "bedtime", "go to sleep", "mochi", "pixel", "showcase", "parade", "play all", "show all")
+"hug", "kiss", "cuddle", "sleepy", "yawn", "nap", "bedtime",
+                     "go to sleep", "mochi", "pixel", "showcase", "parade", "play all", "show all",
+                     "flip", "backflip", "somersault", "tumble", "spin me",
+                     "coinflip", "coin flip", "flip a coin", "toss a coin",
+                     "heads or tails", "coin")
     if re.search(r"\b(pet|kibo|mochi)\b", t) and any(w in t for w in _pet_any):
         return [("pet_animate", {"action": t})]
 
