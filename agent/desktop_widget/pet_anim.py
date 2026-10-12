@@ -1,5 +1,6 @@
 import math
 import random
+from agent.desktop_widget.config import mix
 
 
 def start_fx(av, kind):
@@ -85,8 +86,8 @@ def update_fx(av):
             b["timer"] = 22
             bx = random.uniform(s * 0.2, s * 0.8)
             by = random.uniform(s * 0.1, s * 0.5)
-            col = random.choice(("#f9e2af", "#f5c2e7", "#89dceb",
-                                 "#a6e3a1", "#cba6f7"))
+            col = random.choice(av.p("fx", ("#f9e2af", "#f5c2e7", "#89dceb",
+                                            "#a6e3a1", "#cba6f7")))
             for _ in range(14):
                 ang = random.uniform(0, math.pi * 2)
                 sp = random.uniform(1, 3.5)
@@ -139,7 +140,7 @@ def update_fx(av):
             "x": s // 2 + random.uniform(-14, 14),
             "y": s // 2 - s * 0.3,
             "life": 45, "size": random.randint(8, 13),
-            "color": "#89dceb",
+            "color": av.p("eye_light", "#89dceb"),
         })
     for n in fx["notes"]:
         n["y"] -= 1.1; n["life"] -= 1
@@ -162,11 +163,12 @@ def draw_fx(av):
     cx = s // 2
     cy = s // 2 + 1
     body_r = int(s * 0.36)
+    ink = av.p("ink", "#2b2438")
     fx = av._fx
     for p in fx["sparkles"]:
         t = max(0.0, p["life"] / p["max"])
         sz = max(4, int(9 * t))
-        av.create_text(p["x"], p["y"], text="✦", fill="#fff3b0",
+        av.create_text(p["x"], p["y"], text="✦", fill=av.p("sparkle", "#fff3b0"),
                        font=("Segoe UI", sz))
     for p in fx["fire"]:
         r = max(1, int(3 * p["life"] / 35))
@@ -189,18 +191,18 @@ def draw_fx(av):
             x = cx + math.cos(ang) * ring
             y = cy + math.sin(ang) * ring * 0.55
             sz = 6 if i % 2 else 8
-            av.create_text(x, y, text="★", fill="#f9e2af",
+            av.create_text(x, y, text="★", fill=av.p("states", {}).get("working", "#f9e2af"),
                            font=("Segoe UI", sz))
     for d in fx["drops"]:
-        av.create_text(d["x"], d["y"], text="♥", fill="#ff8fab",
+        av.create_text(d["x"], d["y"], text="♥", fill=av.p("petted", "#ff8fab"),
                        font=("Segoe UI", d["size"]))
     for n in fx["notes"]:
         av.create_text(n["x"], n["y"], text="♪",
                        fill=n.get("color", "#89dceb"),
                        font=("Segoe UI", n["size"]))
     if fx.get("rainbow", 0) > 0:
-        cols = ("#f38ba8", "#fab387", "#f9e2af", "#a6e3a1",
-                "#89dceb", "#cba6f7")
+        cols = av.p("fx", ("#f38ba8", "#fab387", "#f9e2af", "#a6e3a1",
+                           "#89dceb", "#cba6f7"))
         for i, c in enumerate(cols):
             r = body_r + 6 + i * 3
             start = 180 + math.sin(av._frame * 0.08) * 8
@@ -213,23 +215,23 @@ def draw_fx(av):
     if fx.get("giggle", 0) > 0:
         off = math.sin(av._frame * 0.6) * 3
         av.create_text(cx + body_r + 4 + off, cy - body_r,
-                       text="≧◡≦", fill="#ffffff",
+                       text="≧◡≦", fill=mix(av.p("states", {}).get(av.state, "#ffffff"), ink, 0.75),
                        font=("Segoe UI", 8, "bold"))
     if fx.get("zoom", 0) > 0:
         w = body_r + 14
         for i in range(3):
             y = cy + (i - 1) * 14 + math.sin(av._frame * 0.5 + i) * 2
             av.create_line(cx - w, y, cx - w + 10, y,
-                           fill="#a6e3a1", width=2)
+                           fill=av.p("states", {}).get("idle", "#a6e3a1"), width=2)
             av.create_line(cx + w, y, cx + w - 10, y,
-                           fill="#a6e3a1", width=2)
+                           fill=av.p("states", {}).get("idle", "#a6e3a1"), width=2)
     if fx.get("water", 0) > 0:
         for d in fx["wdrops"]:
             x, y = d["x"], d["y"]
             av.create_oval(x - 3, y - 1, x + 3, y + 5,
-                           fill="#89dceb", outline="")
+                           fill=av.p("eye_light", "#89dceb"), outline="")
             av.create_polygon(x - 3, y + 1, x + 3, y + 1, x, y - 5,
-                              fill="#89dceb", outline="")
+                              fill=av.p("eye_light", "#89dceb"), outline="")
         ripple = (av._frame % 30) / 30
         rw = 4 + ripple * 14
         av.create_oval(cx - rw, s - 8 - ripple * 2,
@@ -254,9 +256,9 @@ def draw_fx(av):
             av.create_oval(px - 2.5, py - 2.5, px + 2.5, py + 2.5,
                            fill="#f5c2e7", outline="")
         av.create_oval(fx0 - 2, fy - 2, fx0 + 2, fy + 2,
-                       fill="#f9e2af", outline="")
+                       fill=av.p("states", {}).get("working", "#f9e2af"), outline="")
         av.create_oval(cx - 34, 12, cx - 24, 22,
-                       fill="#f9e2af", outline="")
+                       fill=av.p("states", {}).get("working", "#f9e2af"), outline="")
         av.create_text(cx, 10, text="touch grass!", fill="#a6e3a1",
                        font=("Segoe UI", 7, "bold"))
 
@@ -280,7 +282,7 @@ def draw_fx(av):
             av.create_oval(ex - 4 + look, cy - 4, ex + 4 + look, cy + 4,
                            fill="#2b2438", outline="")
         av.create_text(cx, 10, text="20-20-20: look far!",
-                       fill="#f9e2af", font=("Segoe UI", 7, "bold"))
+                       fill=av.p("states", {}).get("working", "#f9e2af"), font=("Segoe UI", 7, "bold"))
 
 
 
@@ -303,7 +305,7 @@ def draw_fx(av):
 
         sz = int(10 + (1.0 - t) * 6)
         av.create_text(cx, cy - body_r - 18, text="♪ NEW ♪",
-                       fill="#f9e2af", font=("Segoe UI", sz, "bold"))
+                       fill=av.p("states", {}).get("working", "#f9e2af"), font=("Segoe UI", sz, "bold"))
         
         for i in range(3):
             ang = av._frame * 0.15 + i * math.pi * 2 / 3
@@ -420,13 +422,13 @@ def draw_fx(av):
             wdt = max(2, int(coin_r * abs(math.cos(spin * math.pi))))
             av.create_oval(coin_x - wdt, coin_y - coin_r,
                            coin_x + wdt, coin_y + coin_r,
-                           fill="#f9e2af", outline="#c9a227", width=2)
+                           fill=av.p("states", {}).get("working", "#f9e2af"), outline="#c9a227", width=2)
             av.create_line(coin_x - wdt - 5, coin_y - 4,
                            coin_x - wdt - 9, coin_y - 7,
-                           fill="#fff3b0", width=2, capstyle="round")
+                           fill=av.p("sparkle", "#fff3b0"), width=2, capstyle="round")
             av.create_line(coin_x + wdt + 5, coin_y - 4,
                            coin_x + wdt + 9, coin_y - 7,
-                           fill="#fff3b0", width=2, capstyle="round")
+                           fill=av.p("sparkle", "#fff3b0"), width=2, capstyle="round")
             
 
 
@@ -438,7 +440,7 @@ def draw_fx(av):
                            fill="#c9a227", outline="")
             av.create_oval(coin_x - coin_r, coin_y - coin_r,
                            coin_x + coin_r, coin_y + coin_r,
-                           fill="#f9e2af", outline="#c9a227", width=2)
+                           fill=av.p("states", {}).get("working", "#f9e2af"), outline="#c9a227", width=2)
             av.create_text(coin_x, coin_y,
                            text="★" if face == "heads" else "✦",
                            fill="#8a6d3b", font=("Segoe UI", 13, "bold"))
@@ -447,7 +449,7 @@ def draw_fx(av):
 
 
                            
-                           fill="#f9e2af", font=("Segoe UI", 9, "bold"))
+                           fill=av.p("states", {}).get("working", "#f9e2af"), font=("Segoe UI", 9, "bold"))
             if not fx.get("coin_spark", False):
                 fx["coin_spark"] = True
                 for _ in range(14):
@@ -471,7 +473,7 @@ def draw_fx(av):
                        fill="#2b2438", outline="")
         av.create_oval(cx - mw // 2, my + mh // 3,
                        cx + mw // 2, my + mh,
-                       fill="#ff8fab", outline="")
+                       fill=av.p("petted", "#ff8fab"), outline="")
         for i in range(2):
             r = body_r + 6 + i * 6 + int(flap * 3)
             av.create_arc(cx + body_r - 4, cy - r,

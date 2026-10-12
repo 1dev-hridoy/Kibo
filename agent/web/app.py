@@ -209,6 +209,57 @@ def get_model():
     })
 
 
+@app.route("/api/widget-theme")
+def get_widget_theme():
+    """List themes and report the active one."""
+    from agent.desktop_widget.config import THEMES, load_config
+    cfg = load_config()
+    current = cfg.get("theme", "midnight")
+
+
+    return jsonify({
+        "active": current,
+        "themes": [{
+            "id": k,
+            "label": t["label"],
+            "background": t["background"],
+            "swatch": [t["bg_color"], t["accent_color"], t["fg_color"]],
+        } for k, t in THEMES.items()],
+    })
+
+
+@app.route("/api/widget-theme", methods=["POST"])
+def set_widget_theme():
+    """Switch the widget theme (colours + pet palette)."""
+    data = request.get_json(force=True, silent=True) or {}
+    theme = str(data.get("theme", "")).strip().lower()
+    if not theme:
+        return jsonify({"error": "No theme specified"}), 400
+    
+
+    from agent.desktop_widget.config import (THEMES, load_config,
+                                             save_config, apply_theme)
+    
+    if theme not in THEMES:
+        return jsonify({
+            "error": "Unknown theme '%s'" % theme,
+            "available": list(THEMES),
+        }), 400
+
+    
+
+    cfg = load_config()
+    key = apply_theme(cfg, theme)
+    save_config(cfg)
+    return jsonify({
+        "success": True,
+        "active": key,
+        "label": THEMES[key]["label"],
+        "message": "Theme set to %s. A running widget picks it up within "
+                   "a second." % THEMES[key]["label"],
+    })
+
+
 @app.route("/api/model", methods=["POST"])
 def set_model():
     """Switch model."""

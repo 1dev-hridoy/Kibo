@@ -6,7 +6,7 @@ from agent.desktop_widget.config import shade, mix
 def draw_mochi(av):
     av.delete("all")
     s = av.size
-    ink = av.INK
+    ink = av.p("ink", "#2b2438")
     cx = s // 2
     cy = s // 2 + 1
     body_r = int(s * 0.36)
@@ -100,7 +100,7 @@ def draw_mochi(av):
 
 
     ear_outer = shade(color, -0.12)
-    ear_inner = "#f5a3b5"
+    ear_inner = av.p("ear_inner", "#f5a3b5")
     wiggle = math.sin(av._frame * 0.15) * 0.6 if av.state != "idle" else 0
     if av._hovering:
         wiggle += 0.5
@@ -185,7 +185,7 @@ def draw_mochi(av):
                            start=20, extent=140, style="arc",
                            outline=ink, width=2.2)
             av.create_text(ex + eye_r * 1.4, eye_y - eye_r * 0.9,
-                            text="✦", fill="#fff3b0",
+                            text="✦", fill=av.p("sparkle", "#fff3b0"),
                             font=("Segoe UI", 7))
 
 
@@ -250,20 +250,14 @@ def draw_mochi(av):
     av.create_polygon(cx - nose_w, nose_y,
                       cx + nose_w, nose_y,
                       cx, nose_y + nose_w * 1.5,
-                      fill="#ff8fab", outline="", smooth=True)
+                      fill=av.p("nose", "#ff8fab"), outline="", smooth=True)
 
 
 
 
 
-    if av.state == "happy":
-        cheek_c = "#ffafcc"
-    elif av.state == "approval":
-        cheek_c = "#ffb3c6"
-    elif av.state == "sleepy":
-        cheek_c = "#f5a3b5"
-    else:
-        cheek_c = "#ff8fab"
+    blush = av.p("blush", {}) or {}
+    cheek_c = blush.get(av.state) or blush.get("default") or "#ff8fab"
     cr = s * 0.075
     cheek_y = eye_y + eye_r * 1.55
     for side in (-1, 1):
@@ -306,7 +300,7 @@ def draw_mochi(av):
                        fill=ink, outline="")
         av.create_oval(cx - yw * 0.5, my + yh * 0.3,
                        cx + yw * 0.5, my + yh * 0.9,
-                       fill="#ff8fab", outline="")
+                       fill=av.p("tongue", "#ff8fab"), outline="")
 
 
         
@@ -327,7 +321,7 @@ def draw_mochi(av):
                       fill=ink, outline=ink, width=1.5)
         av.create_oval(cx - mw * 0.6, my + mw * 0.3,
                        cx + mw * 0.6, my + mw * 1.3,
-                       fill="#ff8fab", outline="")
+                       fill=av.p("tongue", "#ff8fab"), outline="")
 
 
         
@@ -363,7 +357,7 @@ def draw_mochi(av):
                        fill=ink, outline="")
         av.create_oval(cx - mw * 0.55, my + mw * 0.55,
                        cx + mw * 0.55, my + mw * 1.3,
-                       fill="#ff8fab", outline="")
+                       fill=av.p("tongue", "#ff8fab"), outline="")
         
 
 
@@ -402,16 +396,16 @@ def draw_mochi(av):
             sx = cx + math.cos(ang) * (rx + 5)
             sy = cy_b - ry * 0.5 + math.sin(ang) * (ry * 0.7)
             twinkle = 5 + int(abs(math.sin(av._frame * 0.25 + i)) * 3)
-            av.create_text(sx, sy, text="✦", fill="#fff3b0",
+            av.create_text(sx, sy, text="✦", fill=av.p("sparkle", "#fff3b0"),
                            font=("Segoe UI", twinkle))
 
     if av.state == "approval":
         dy = (av._frame % 20) * 0.3
         av.create_oval(cx + rx - 3, cy_b - ry + 3 + dy,
                        cx + rx + 1, cy_b - ry + 9 + dy,
-                       fill="#89dceb", outline="")
+                       fill=av.p("eye_light", "#89dceb"), outline="")
         av.create_text(cx - rx - 2, cy_b - ry - 1 - bounce * 0.5,
-                       text="!", fill="#ffffff",
+                       text="!", fill=mix(av.p("eye_light", "#89dceb"), ink, 0.7),
                        font=("Segoe UI", 9, "bold"))
 
 
@@ -425,7 +419,7 @@ def draw_mochi(av):
 
     for h in av._hearts:
         t = max(0.0, h['life'] / 45)
-        c = mix(av.base_bg, "#ff6b95", t)
+        c = mix(av.base_bg, av.p("petted", "#ff6b95"), t)
         sz = max(6, int(h['size'] * (0.5 + t * 0.5)))
         av.create_text(h['x'], h['y'], text="♥",
                        fill=c, font=("Segoe UI", sz))

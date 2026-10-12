@@ -25,6 +25,38 @@ class TestImports(unittest.TestCase):
         from agent.model_manager import MODELS
         self.assertIn("needle", MODELS)
         self.assertIn("functiongemma", MODELS)
+        for key in ("qwen3-0.6b", "qwen2.5-1.5b", "qwen2.5-3b",
+                    "gemma3-1b", "gemma3-4b"):
+            self.assertIn(key, MODELS)
+            self.assertIn("license", MODELS[key])
+
+    def test_model_aliases_resolve(self):
+        from agent.model_manager import MODEL_ALIASES, resolve_model_name
+        cases = {
+            "qwen": "qwen3-0.6b",
+            "qwen3": "qwen3-0.6b",
+            "qwen2.5-1.5b": "qwen2.5-1.5b",
+            "qwen1.5b": "qwen2.5-1.5b",
+            "qwen3b": "qwen2.5-3b",
+            "qwen2.5-3b": "qwen2.5-3b",
+            "gemma3": "gemma3-1b",
+            "gemma3-1b": "gemma3-1b",
+            "gemma3-4b": "gemma3-4b",
+            "gemma-4b": "gemma3-4b",
+            "gemma": "functiongemma",
+            "n": "needle",
+        }
+        for alias, target in cases.items():
+            self.assertEqual(resolve_model_name(alias), target, alias)
+            self.assertIn(alias, MODEL_ALIASES)
+
+    def test_gguf_registry(self):
+        from agent.model_manager import GGUF_MODELS, model_path, model_url
+        for key in ("functiongemma", "qwen3-0.6b", "qwen2.5-1.5b",
+                    "qwen2.5-3b", "gemma3-1b", "gemma3-4b"):
+            self.assertIn(key, GGUF_MODELS)
+            self.assertTrue(model_path(key).endswith(".gguf"))
+            self.assertIn("huggingface.co", model_url(key))
 
 
 class TestVersion(unittest.TestCase):

@@ -5,19 +5,21 @@ Split out of fastpath.py to keep modules within the line cap.
 import re
 from datetime import datetime
 
+from agent.model_manager import MODEL_ALIASES
+
 
 
 
 def model_route(t):
-    m = re.match(r"^(?:switch|change|use)\s+(?:to\s+)?(?:the\s+)?(?:model\s+)?(\w+)$", t)
+    m = re.match(
+        r"^(?:switch|change|use)\s+(?:to\s+)?(?:the\s+)?(?:model\s+)?([\w.\-]+)$",
+        t,
+    )
     if m:
         if m.group(1).lower() in ("model", "models"):
             return "__models__", None
         return "__switch_model__", m.group(1).lower()
-    if t in ("needle", "needle2", "n", "gemma", "google", "func", "functiongemma", "fg"):
-
-
-
+    if t in MODEL_ALIASES:
         return "__switch_model__", t
     if re.match(r"^(?:what|which|current|active)\s+model$", t):
 

@@ -1,6 +1,7 @@
 import math
 import random
 
+from agent.desktop_widget.config import DEFAULT_PET
 from agent.desktop_widget.pixel_cat import draw_pixel_cat
 
 
@@ -127,16 +128,22 @@ class MochiAvatar:
         self._showcase = []
         self._idle_anim_in = 300
         self.loading = True
-        self.colors = {
-            "idle":     "#a6e3a1",
-            "working":  "#f9e2af",
-            "approval": "#f38ba8",
-            "happy":    "#f5c2e7",
-            "sleepy":   "#94e2d5",
-            "annoyed":  "#fab387",
-            "dizzy":    "#cba6f7",
-        }
+        self.pal = dict(DEFAULT_PET)
+        self.colors = dict(DEFAULT_PET["states"])
         self._tick()
+
+    def set_palette(self, pal):
+        """Adopt a theme's pet palette (see config.DEFAULT_PET)."""
+        self.pal = dict(pal or DEFAULT_PET)
+        self.pal["blush"] = dict(self.pal.get("blush", {}))
+        self.pal["states"] = dict(self.pal.get("states", {}))
+        self.colors = dict(self.pal["states"])
+        return self.pal
+
+    def p(self, key, fallback=None):
+        """Palette lookup with a safe fallback."""
+        v = self.pal.get(key)
+        return fallback if v is None else v
 
 
 
@@ -301,8 +308,7 @@ class MochiAvatar:
                 'vx': math.cos(angle) * speed,
                 'vy': math.sin(angle) * speed - 1.5,
                 'life': 60,
-                'color': random.choice(("#f9e2af", "#f5c2e7", "#89dceb",
-                                        "#a6e3a1", "#cba6f7", "#f38ba8")),
+                'color': random.choice(self.p("fx", DEFAULT_PET["fx"])),
                 'size': random.uniform(3, 6),
             })
 
@@ -486,5 +492,5 @@ class MochiAvatar:
                 dy = math.sin(ang) * rr * 0.9
                 view.create_oval(s // 2 + dx - 2.5, s // 2 + dy - 2.5,
                                  s // 2 + dx + 2.5, s // 2 + dy + 2.5,
-                                 fill="#89dceb" if lit else "#313244",
+                                 fill=self.p("eye_light") if lit else self.p("eye_dark"),
                                  outline="")

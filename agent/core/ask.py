@@ -47,7 +47,7 @@ def ask(text: str) -> dict:
 
                         f"Current model: {current_name}\n"
                         f"Already using this model.\n"
-                        f"Type 'gemma' or 'needle' to switch."
+                        f"Type 'models' to see options."
                     )
                     add_exchange(text, reply)
                     reflect_on_exchange(text, reply)
@@ -59,23 +59,6 @@ def ask(text: str) -> dict:
 
                         "tool_calls": [], "results": [], "media": None
                     }
-                if not is_model_available(resolved):
-                    target_name = MODELS.get(resolved, {}).get("name", resolved)
-                    reply = (
-                        f"Current model: {current_name}\n"
-                        f"Target model: {target_name} (not downloaded)\n"
-                        f"Run: ./install.sh --fresh to download it."
-                    )
-
-
-                    add_exchange(text, reply)
-                    reflect_on_exchange(text, reply)
-                    return {
-
-                        "text": reply,
-                        "tool_calls": [], "results": [], "media": None
-                    }
-
             success, msg = switch_model(model_name)
             if success:
                 reload_backend()

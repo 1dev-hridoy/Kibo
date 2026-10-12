@@ -255,6 +255,44 @@ variants — 130 total, see `/tools` in the web UI.
 
 ---
 
+## Models
+
+Kibo ships a tiny built-in tool-calling model and can download larger
+llama.cpp (GGUF) models on demand. Switch by name in chat
+(`switch qwen3b`), via the web UI model picker, or the Telegram **Model**
+button. If a model isn't downloaded yet it is fetched automatically when
+you switch to it.
+
+| Name        | Key            | Size (Q4_K_M) | RAM     | Context | License       |
+| ----------- | -------------- | ------------- | ------- | ------- | ------------- |
+| Needle 2    | `needle`       | 14 MB         | ~28 MB  | 256     | Apache-2.0    |
+| FunctionGemma | `functiongemma` | ~253 MB     | ~400 MB | 2k      | Gemma Terms   |
+| Qwen3       | `qwen3-0.6b`   | ~397 MB       | ~600 MB | 32k     | Apache-2.0    |
+| Qwen2.5 1.5B | `qwen2.5-1.5b` | ~1.1 GB      | ~1.4 GB | 32k     | Apache-2.0    |
+| Qwen2.5 3B  | `qwen2.5-3b`   | ~2.1 GB       | ~2.4 GB | 32k     | Qwen-Research |
+| Gemma 3 1B  | `gemma3-1b`    | ~806 MB       | ~1 GB   | 128k    | Gemma Terms   |
+| Gemma 3 4B  | `gemma3-4b`    | ~2.5 GB       | ~3 GB   | 128k    | Gemma Terms   |
+
+Every non-Needle model needs `llama-cpp-python`
+(`pip install "kibo[llama]"`). Installation with a specific model:
+
+```bash
+./install.sh --model qwen3-0.6b   # or qwen2.5-1.5b, qwen2.5-3b, gemma3-1b, gemma3-4b, all
+```
+
+Windows:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File install.ps1 -Model qwen2.5-3b
+```
+
+> **Licenses:** Gemma 3 is under Google's Gemma Terms and Qwen2.5 3B under
+> the Qwen-Research license — review them before commercial use. The
+> Gemma weights may require accepting the license (and an `HF_TOKEN`) on
+> Hugging Face. Qwen3 and Qwen2.5 1.5B are Apache-2.0.
+
+---
+
 ## How it works
 
 1. **Install** — one command, local virtualenv, pick a model.

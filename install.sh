@@ -5,6 +5,7 @@
 # ═══════════════════════════════════════════════════════════════════════
 set -e
 
+MODEL_PRESET=""
 
 
 
@@ -245,6 +246,26 @@ select_model() {
     step "6/9" "AI Model Selection"
     line
 
+
+
+    if [ -n "$MODEL_PRESET" ]; then
+        case "$(printf '%s' "$MODEL_PRESET" | tr 'A-Z' 'a-z')" in
+            needle|needle2|n) MODEL_CHOICE=1 ;;
+            gemma|functiongemma|fg|google|func) MODEL_CHOICE=2 ;;
+            both) MODEL_CHOICE=3 ;;
+            qwen|qwen3|qwen3-0.6b|qwen-0.6b|qwen0.6b) MODEL_CHOICE=4 ;;
+            qwen2.5-1.5b|qwen1.5b|qwen-1.5b) MODEL_CHOICE=5 ;;
+            qwen2.5-3b|qwen3b|qwen-3b) MODEL_CHOICE=6 ;;
+            gemma3|gemma3-1b|gemma-3-1b|gemma-1b|g3-1b) MODEL_CHOICE=7 ;;
+            gemma3-4b|gemma-3-4b|gemma-4b|g3-4b) MODEL_CHOICE=8 ;;
+            all) MODEL_CHOICE=9 ;;
+            *) warn "Unknown --model '$MODEL_PRESET', using default Needle"; MODEL_CHOICE=1 ;;
+        esac
+        info "Model selected via --model: $MODEL_PRESET"
+        return
+    fi
+
+
     printf "\n"
     printf "  ${BOLD}┌─────────────────────────────────────────────────┐${NC}\n"
     printf "  ${BOLD}│${NC}  ${WHITE}Choose your AI model:${NC}                            ${BOLD}│${NC}\n"
@@ -256,19 +277,25 @@ select_model() {
     printf "  ${BOLD}│${NC}  ${GREEN}[2]${NC} ${BOLD}FunctionGemma${NC}   ${YELLOW}253 MB${NC}  ${DIM}Smarter reasoning${NC}     ${BOLD}│${NC}\n"
     printf "  ${BOLD}│${NC}      ${DIM}by Google DeepMind${NC}                          ${BOLD}│${NC}\n"
     printf "  ${BOLD}│${NC}                                                 ${BOLD}│${NC}\n"
-    printf "  ${BOLD}│${NC}  ${GREEN}[3]${NC} ${BOLD}Both models${NC}     ${YELLOW}267 MB${NC}  ${DIM}Switch anytime${NC}        ${BOLD}│${NC}\n"
-    printf "  ${BOLD}│${NC}      ${DIM}Recommended for full experience${NC}             ${BOLD}│${NC}\n"
+    printf "  ${BOLD}│${NC}  ${GREEN}[3]${NC} ${BOLD}Needle + Gemma${NC}  ${YELLOW}267 MB${NC}  ${DIM}Switch anytime${NC}        ${BOLD}│${NC}\n"
+    printf "  ${BOLD}│${NC}                                                 ${BOLD}│${NC}\n"
+    printf "  ${BOLD}│${NC}  ${GREEN}[4]${NC} ${BOLD}Qwen3 0.6B${NC}      ${YELLOW}397 MB${NC}  ${DIM}32k ctx${NC}               ${BOLD}│${NC}\n"
+    printf "  ${BOLD}│${NC}  ${GREEN}[5]${NC} ${BOLD}Qwen2.5 1.5B${NC}    ${YELLOW}1.1 GB${NC}  ${DIM}Balanced${NC}              ${BOLD}│${NC}\n"
+    printf "  ${BOLD}│${NC}  ${GREEN}[6]${NC} ${BOLD}Qwen2.5 3B${NC}      ${YELLOW}2.1 GB${NC}  ${DIM}Most capable Qwen${NC}     ${BOLD}│${NC}\n"
+    printf "  ${BOLD}│${NC}  ${GREEN}[7]${NC} ${BOLD}Gemma 3 1B${NC}      ${YELLOW}806 MB${NC}  ${DIM}128k ctx${NC}               ${BOLD}│${NC}\n"
+    printf "  ${BOLD}│${NC}  ${GREEN}[8]${NC} ${BOLD}Gemma 3 4B${NC}      ${YELLOW}2.5 GB${NC}  ${DIM}Most capable${NC}           ${BOLD}│${NC}\n"
+    printf "  ${BOLD}│${NC}  ${GREEN}[9]${NC} ${BOLD}Download all${NC}    ${YELLOW}~9 GB${NC}  ${DIM}Everything${NC}             ${BOLD}│${NC}\n"
     printf "  ${BOLD}│${NC}                                                 ${BOLD}│${NC}\n"
     printf "  ${BOLD}└─────────────────────────────────────────────────┘${NC}\n"
     printf "\n"
-    printf "  ${BOLD}Enter 1, 2, or 3 [${GREEN}default: 1${NC}${BOLD}]: ${NC}"
+    printf "  ${BOLD}Enter 1-9 [${GREEN}default: 1${NC}${BOLD}]: ${NC}"
     if [ -t 0 ]; then
         read -r MODEL_CHOICE
     else
         MODEL_CHOICE="1"
         printf "1 (piped install — default)\n"
-        printf "  ${DIM}Tip: download and run directly for model selection:${NC}\n"
-        printf "  ${DIM}curl -sLO https://raw.githubusercontent.com/1dev-hridoy/Kibo/main/install.sh && ./install.sh${NC}\n"
+        printf "  ${DIM}Tip: install a specific model with:${NC}\n"
+        printf "  ${DIM}curl -sLO https://raw.githubusercontent.com/1dev-hridoy/Kibo/main/install.sh && ./install.sh --model qwen2.5-3b${NC}\n"
     fi
     MODEL_CHOICE="${MODEL_CHOICE:-1}"
 }
@@ -282,20 +309,65 @@ download_models() {
 
     mkdir -p "$HOME/.agent_models/functiongemma"
 
-    download_functiongemma() {
-        MODEL_PATH="$HOME/.agent_models/functiongemma/functiongemma-270m-it-Q4_K_M.gguf"
-        if [ -f "$MODEL_PATH" ]; then
-            ok "FunctionGemma already downloaded"
+    download_gguf() {
+        local key="$1" repo="$2" file="$3" label="$4" size="$5"
+        local dir="$HOME/.agent_models/$key"
+        local path="$dir/$file"
+        mkdir -p "$dir"
+        if [ -f "$path" ]; then
+            ok "$label already downloaded"
             return
         fi
-        info "Downloading FunctionGemma 270M (~253 MB)..."
+        info "Downloading $label ($size)..."
         info "This may take a few minutes on slow connections."
         printf "\n"
-        wget -q --show-progress -O "$MODEL_PATH" \
-            "https://huggingface.co/unsloth/functiongemma-270m-it-GGUF/resolve/main/functiongemma-270m-it-Q4_K_M.gguf" \
-            && ok "FunctionGemma downloaded" \
-            || warn "Download failed — you can still use Needle"
+        wget -q --show-progress -O "$path.part" \
+            "https://huggingface.co/$repo/resolve/main/$file" \
+            && mv "$path.part" "$path" && ok "$label downloaded" \
+            || { rm -f "$path.part"; warn "$label download failed"; }
         printf "\n"
+    }
+
+    download_functiongemma() {
+        download_gguf functiongemma \
+            "unsloth/functiongemma-270m-it-GGUF" \
+            "functiongemma-270m-it-Q4_K_M.gguf" \
+            "FunctionGemma 270M" "253 MB"
+    }
+
+
+
+    download_qwen3_06b() {
+        download_gguf qwen3-0.6b "unsloth/Qwen3-0.6B-GGUF" \
+            "Qwen3-0.6B-Q4_K_M.gguf" "Qwen3 0.6B" "397 MB"
+    }
+
+    download_qwen25_15b() {
+        download_gguf qwen2.5-1.5b "Qwen/Qwen2.5-1.5B-Instruct-GGUF" \
+            "qwen2.5-1.5b-instruct-q4_k_m.gguf" "Qwen2.5 1.5B" "1.1 GB"
+    }
+
+
+
+
+    download_qwen25_3b() {
+        download_gguf qwen2.5-3b "Qwen/Qwen2.5-3B-Instruct-GGUF" \
+            "qwen2.5-3b-instruct-q4_k_m.gguf" "Qwen2.5 3B" "2.1 GB"
+    }
+
+
+
+    download_gemma3_1b() {
+        download_gguf gemma3-1b "unsloth/gemma-3-1b-it-GGUF" \
+            "gemma-3-1b-it-Q4_K_M.gguf" "Gemma 3 1B" "806 MB"
+    }
+
+
+
+
+    download_gemma3_4b() {
+        download_gguf gemma3-4b "unsloth/gemma-3-4b-it-GGUF" \
+            "gemma-3-4b-it-Q4_K_M.gguf" "Gemma 3 4B" "2.5 GB"
     }
 
     verify_needle() {
@@ -310,31 +382,89 @@ download_models() {
             || warn "llama-cpp-python install failed"
     }
 
+    set_active() {
+        echo "{\"active_model\": \"$1\"}" > "$HOME/.agent_model_config.json"
+    }
+
     case "$MODEL_CHOICE" in
         1)
             verify_needle
-            echo '{"active_model": "needle"}' > "$HOME/.agent_model_config.json"
+            set_active needle
             ok "Default model: Needle 2"
             ;;
         2)
             download_functiongemma
             install_llama_cpp
-            echo '{"active_model": "functiongemma"}' > "$HOME/.agent_model_config.json"
+            set_active functiongemma
             ok "Default model: FunctionGemma"
             ;;
         3)
             verify_needle
             download_functiongemma
             install_llama_cpp
-            echo '{"active_model": "needle"}' > "$HOME/.agent_model_config.json"
+            set_active needle
             ok "Default model: Needle 2"
             info "Type 'gemma' to switch to FunctionGemma"
+            ;;
+        4)
+            install_llama_cpp
+            download_qwen3_06b
+            set_active qwen3-0.6b
+            ok "Default model: Qwen3 0.6B"
+            ;;
+        5)
+
+
+
+            install_llama_cpp
+            download_qwen25_15b
+            set_active qwen2.5-1.5b
+            ok "Default model: Qwen2.5 1.5B"
+            ;;
+
+
+
+        6)
+            install_llama_cpp
+            download_qwen25_3b
+            set_active qwen2.5-3b
+            ok "Default model: Qwen2.5 3B"
+            ;;
+
+
+
+        7)
+            install_llama_cpp
+            download_gemma3_1b
+            set_active gemma3-1b
+            ok "Default model: Gemma 3 1B"
+            ;;
+        8)
+
+        
+            install_llama_cpp
+            download_gemma3_4b
+            set_active gemma3-4b
+            ok "Default model: Gemma 3 4B"
+            ;;
+        9)
+            verify_needle
+            install_llama_cpp
+            download_functiongemma
+            download_qwen3_06b
+            download_qwen25_15b
+            download_qwen25_3b
+            download_gemma3_1b
+            download_gemma3_4b
+            set_active needle
+            ok "Default model: Needle 2"
+            info "Type 'models' to see and switch between all downloaded models"
             ;;
         *)
             verify_needle
             download_functiongemma
             install_llama_cpp
-            echo '{"active_model": "needle"}' > "$HOME/.agent_model_config.json"
+            set_active needle
             ;;
     esac
 }
@@ -488,7 +618,27 @@ verify_install() {
 
 
 
+parse_args() {
+    while [ $# -gt 0 ]; do
+        case "$1" in
+            --model)
+                shift
+                MODEL_PRESET="${1:-}"
+                ;;
+            --model=*)
+                MODEL_PRESET="${1#*=}"
+                ;;
+            --fresh)
+                : # accepted for backwards compatibility
+                ;;
+        esac
+        shift
+    done
+}
+
+
 main() {
+    parse_args "$@"
     show_banner
     check_system
     get_kibo

@@ -56,6 +56,7 @@ def cmd_help():
     print("    kibo restart <mode>   stop, then start again")
     print("    kibo status           show what is running")
     print("    kibo logs [n]         tail the last n log lines")
+    print("    kibo theme [name]     list or set the widget theme")
     print("    kibo update           git pull and reinstall")
     print()
     print("    Home: %s" % HOME)
@@ -175,6 +176,45 @@ def cmd_update():
     return 0
 
 
+def cmd_theme(args):
+    """Show or switch the desktop widget theme (and its pet palette)."""
+    sys.path.insert(0, os.path.dirname(os.path.dirname(
+        os.path.abspath(__file__))))
+    try:
+        from agent.desktop_widget.config import (THEMES, load_config,
+                                                 save_config, apply_theme)
+    except ImportError as e:
+        print("  Could not load themes: %s" % e)
+        return 1
+
+    name = (args[0] if args else "").strip().lower()
+    current = load_config().get("theme", "midnight")
+
+    if not name or name in ("list", "ls"):
+        print()
+        print("  Widget themes")
+        print()
+        for key, t in THEMES.items():
+            mark = "*" if key == current else " "
+            print("   %s %-9s %s" % (mark, key, t["label"]))
+        print()
+        print("  Set one with:  kibo theme anime")
+        print()
+        return 0
+
+    cfg = load_config()
+    if name not in THEMES:
+        print("  Unknown theme '%s'. Try: %s"
+              % (name, ", ".join(THEMES)))
+        return 1
+
+    apply_theme(cfg, name)
+    save_config(cfg)
+    print("  Theme set to %s (%s)" % (THEMES[name]["label"], name))
+    print("  A running widget picks it up within a second.")
+    return 0
+
+
 COMMANDS = {
     "help": lambda a: cmd_help(),
     "chat": lambda a: cmd_run([]),
@@ -186,6 +226,8 @@ COMMANDS = {
     "restart": lambda a: (cmd_stop(), cmd_start(a[:1] or ["telegram"]))[1],
     "status": lambda a: cmd_status(),
     "logs": lambda a: cmd_logs(a[:1] or ["40"]),
+    "theme": lambda a: cmd_theme(a),
+    "themes": lambda a: cmd_theme(a),
     "update": lambda a: cmd_update(),
 }
 

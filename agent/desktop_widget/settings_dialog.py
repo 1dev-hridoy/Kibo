@@ -1,12 +1,13 @@
 import tkinter as tk
-from agent.desktop_widget.config import save_config
+from tkinter import ttk
+from agent.desktop_widget.config import save_config, THEMES, DEFAULT_THEME
 from agent.desktop_widget.api import KiboAPI
 
 
 def open_settings(widget):
     dlg = tk.Toplevel(widget.root)
     dlg.title("Kibo Widget Settings")
-    dlg.geometry("400x430")
+    dlg.geometry("400x468")
     dlg.configure(bg=widget.cfg["bg_color"])
     dlg.attributes("-topmost", True)
 
@@ -41,6 +42,26 @@ def open_settings(widget):
         entries[key] = var
 
 
+    tf = tk.Frame(dlg, bg=widget.cfg["bg_color"])
+    tf.pack(fill="x", padx=20, pady=6)
+    tk.Label(tf, text="Theme:", bg=widget.cfg["bg_color"],
+             fg=widget.cfg["fg_color"]).pack(side="left")
+    names = list(THEMES.keys())
+    theme_var = tk.StringVar(
+        value=widget.cfg.get("theme", DEFAULT_THEME)
+        if widget.cfg.get("theme") in names else DEFAULT_THEME)
+    combo = ttk.Combobox(tf, textvariable=theme_var, values=names,
+                         state="readonly", width=17)
+    combo.pack(side="right")
+
+    def preview(*_):
+        """Live preview as the user browses the dropdown."""
+        widget._apply_theme(theme_var.get(), persist=False)
+        _restyle(dlg)
+
+    combo.bind("<<ComboboxSelected>>", preview)
+
+
 
 
     f = tk.Frame(dlg, bg=widget.cfg["bg_color"])
@@ -54,6 +75,48 @@ def open_settings(widget):
 
 
 
+    def _restyle(dlg):
+        """Repaint the open dialog after a live theme preview."""
+        bg = widget.cfg["bg_color"]
+        fg = widget.cfg["fg_color"]
+
+        def walk(w):
+            for child in w.winfo_children():
+                cls = child.winfo_class()
+                if cls in ("Frame", "Label", "TFrame", "TLabel"):
+
+
+                    try:
+                        child.configure(bg=bg)
+                    except Exception:
+
+
+                        pass
+                    if cls == "Label":
+                        try:
+                            child.configure(fg=fg)
+
+
+                        except Exception:
+                            pass
+                elif cls == "Button":
+                    try:
+                        child.configure(bg=widget.cfg["accent_color"],
+                                        fg=bg)
+                    except Exception:
+                        pass
+                elif cls in ("Entry", "TCombobox"):
+                    try:
+                        child.configure(fieldbackground=bg, background=fg)
+
+
+                    except Exception:
+                        pass
+                walk(child)
+
+        dlg.configure(bg=bg)
+        walk(dlg)
+
     def save():
         widget.cfg["width"] = int(entries["width"].get())
         widget.cfg["idle_width"] = int(entries["idle_width"].get())
@@ -66,7 +129,6 @@ def open_settings(widget):
 
 
 
-
         avatar = widget.cfg["avatar_size"]
         if widget.cfg["height"] < avatar + 24:
             widget.cfg["height"] = avatar + 24
@@ -75,7 +137,8 @@ def open_settings(widget):
         if widget.cfg["width"] < widget.cfg["idle_width"] + 320:
             widget.cfg["width"] = widget.cfg["idle_width"] + 580
 
-        save_config(widget.cfg)
+     
+        widget._apply_theme(theme_var.get(), persist=True)
         widget.root.attributes("-alpha", widget.cfg["opacity"])
 
         new_size = widget.cfg["avatar_size"]

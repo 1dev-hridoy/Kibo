@@ -2,7 +2,11 @@ import threading
 import time
 import tkinter as tk
 
-from agent.desktop_widget.config import load_config, save_config
+from agent.desktop_widget.config import (
+    load_config, save_config, apply_theme, resolve_theme, mix, THEMES,
+    CONFIG_FILE, theme_pet)
+
+import os
 from agent.desktop_widget.api import KiboAPI
 from agent.desktop_widget.space_bg import SpaceBackground
 from agent.desktop_widget.avatar import MochiAvatar
@@ -18,6 +22,7 @@ class KiboWidget:
 
     def __init__(self):
         self.cfg = load_config()
+        self._cfg_stamp = self._config_stamp()
         self.api = KiboAPI(self.cfg["api_base"])
         self.running = True
         self._expanded = False
@@ -98,12 +103,14 @@ class KiboWidget:
         fg = self.cfg["fg_color"]
         fs = self.cfg["font_size"]
 
-        self.frame = SpaceBackground(self.root, base_color=bg, bg=bg)
+        self.frame = SpaceBackground(self.root, base_color=bg, bg=bg,
+                                   theme=self.cfg.get("theme", "midnight"))
         self.frame.pack(fill="both", expand=True)
 
         avatar_size = self.cfg.get("avatar_size", 100)
         self.avatar = MochiAvatar(self.root, size=avatar_size,
                                   base_bg=bg)
+        self.avatar.set_palette(theme_pet(self.cfg.get("theme", "midnight")))
         self.frame.pet = self.avatar
         from agent.desktop_widget.pointer import on_motion, on_leave
         self.frame.bind("<Motion>", lambda e: on_motion(self, e))
@@ -111,9 +118,10 @@ class KiboWidget:
 
         self._font_status = ("Segoe UI", fs + 1, "bold")
         self._font_info = ("Segoe UI", fs - 1)
+        dim = mix(bg, fg, 0.6)
         self.status_label = CanvasText(self.root, self.frame, 0, fg,
                                        self._font_status, 0.38)
-        self.task_label = CanvasText(self.root, self.frame, 1, "#9399b2",
+        self.task_label = CanvasText(self.root, self.frame, 1, dim,
                                      self._font_info, 0.62)
         self.tool_label = CanvasText(
             self.root, self.frame, 2,
@@ -146,10 +154,41 @@ class KiboWidget:
             lbl.set_wrap(max(140, w - 150))
         animate_width(self, w)
 
+    def _config_stamp(self):
+        """mtime of the widget config, or None if unreadable."""
+        try:
+            return os.path.getmtime(CONFIG_FILE)
+        except OSError:
+            return None
+
+    def _poll_config_changes(self):
+        """Hot-reload the config so edits (e.g. the theme tool) apply live."""
+        stamp = self._config_stamp()
+        if stamp is None or stamp == self._cfg_stamp:
+            return
+        self._cfg_stamp = stamp
+
+
+        try:
+            fresh = load_config()
+        except Exception:
+            return
+        theme = fresh.get("theme", "midnight")
+
+
+  
+        if theme != self.cfg.get("theme"):
+            self.cfg.update(fresh)
+            self._apply_theme(theme, persist=False)
+        else:
+            self.cfg["opacity"] = fresh["opacity"]
+            self.root.attributes("-alpha", self.cfg["opacity"])
+
     def _start_poller(self):
         def poll():
             while self.running:
                 try:
+                    self.root.after(0, self._poll_config_changes)
                     self._fetch_status()
                 except Exception as e:
 
@@ -438,10 +477,41 @@ class KiboWidget:
         menu.add_command(label="Pet Kibo",
                          command=lambda: self.avatar.celebrate())
         menu.add_separator()
+
+        cur = self.cfg.get("theme", "midnight")
+        tmenu = tk.Menu(menu, tearoff=0, bg="#1e1e2e", fg="#cdd6f4",
+                        activebackground="#313244", activeforeground="#cdd6f4")
+        for tkey, t in THEMES.items():
+            mark = "✓ " if tkey == cur else "    "
+
+            
+            tmenu.add_command(
+                label=f"{mark}{t['label']}",
+                command=lambda k=tkey: self._apply_theme(k))
+        menu.add_cascade(label="Theme", menu=tmenu)
+
         menu.add_command(label="Settings...", command=self._open_settings)
         menu.add_separator()
         menu.add_command(label="Quit", command=self._quit)
         menu.tk_popup(event.x_root, event.y_root)
+
+    def _apply_theme(self, name, persist=True):
+        """Swap the whole widget to a named theme, live."""
+        key = apply_theme(self.cfg, name)
+        bg = self.cfg["bg_color"]
+        fg = self.cfg["fg_color"]
+        self.root.configure(bg=bg)
+        self.frame.configure(bg=bg)
+        self.frame.set_theme(key)
+        self.avatar.base_bg = bg
+        self.avatar.set_palette(theme_pet(key))
+        self.status_label.set_style(fill=fg)
+        self.task_label.set_style(fill=mix(bg, fg, 0.6))
+        self.tool_label.set_style(fill=self.cfg["tool_color"])
+        self.model_label.set_style(fill=self.cfg["accent_color"])
+        if persist:
+            save_config(self.cfg)
+        return key
 
     def _open_web_ui(self):
         import webbrowser

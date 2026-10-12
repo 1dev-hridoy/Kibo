@@ -121,13 +121,62 @@ def _build_main_keyboard():
 
 
 def _build_model_keyboard():
-    """Build model selection keyboard."""
+    """Build model selection keyboard from the model registry."""
     from telebot import types
+    from agent.model_manager import get_models_list
     keyboard = types.InlineKeyboardMarkup(row_width=2)
+    buttons = []
+    for m in get_models_list():
+        mark = "✅ " if m.get("active") else ""
+        buttons.append(types.InlineKeyboardButton(
+            f"{mark}{m.get('name', m['key'])}",
+            callback_data=f"switch_{m['key']}",
+        ))
+    if buttons:
+        keyboard.add(*buttons)
     keyboard.row(
-        types.InlineKeyboardButton("⚡ Needle (14MB)", callback_data="switch_needle"),
-        types.InlineKeyboardButton("🧠 FunctionGemma (253MB)", callback_data="switch_functiongemma"),
+        types.InlineKeyboardButton("🔙 Back", callback_data="cmd_help"),
     )
+    return keyboard
+
+
+def _set_widget_theme(name):
+    """Shared by /theme and the inline keyboard. Returns (ok, message)."""
+    from agent.desktop_widget.config import (THEMES, load_config,
+                                             save_config, apply_theme)
+
+    
+    key = (name or "").strip().lower()
+    if key not in THEMES:
+        return False, ("Unknown theme <code>%s</code>.\nAvailable: %s"
+                       % (key, ", ".join(f"<code>{t}</code>" for t in THEMES)))
+
+    
+    cfg = load_config()
+    apply_theme(cfg, key)
+    save_config(cfg)
+    return True, ("Theme set to <b>%s</b> ✅\nA running widget picks it up "
+                  "within a second." % THEMES[key]["label"])
+
+
+
+def _build_theme_keyboard():
+    """Theme picker built from the widget theme registry."""
+    from telebot import types
+    from agent.desktop_widget.config import THEMES, load_config
+    current = load_config().get("theme", "midnight")
+    keyboard = types.InlineKeyboardMarkup(row_width=2)
+
+
+    buttons = []
+    for key, t in THEMES.items():
+        mark = "✅ " if key == current else ""
+        buttons.append(types.InlineKeyboardButton(
+            f"{mark}{t['label']}",
+            callback_data=f"theme_{key}",
+        ))
+    if buttons:
+        keyboard.add(*buttons)
     keyboard.row(
         types.InlineKeyboardButton("🔙 Back", callback_data="cmd_help"),
     )
@@ -167,35 +216,18 @@ def _handle_callback(bot, call):
         "cmd_model": "__show_model__",
     }
 
-    if data == "switch_needle":
-        from agent.model_manager import switch_model
+    if data.startswith("switch_"):
+        from agent.model_manager import switch_model, get_active_model, resolve_model_name
         from agent.core.engine import reload_backend
+        key = data[len("switch_"):]
         bot.answer_callback_query(call.id)
         bot.edit_message_text("Switching AI model, loading...",
                               chat_id, call.message.message_id)
-        success, msg = switch_model("needle")
+        success, msg = switch_model(key)
         if success:
             reload_backend()
-            from agent.model_manager import get_active_model as _am
-            if _am() != "needle":
+            if get_active_model() != resolve_model_name(key):
                 msg += "\nNote: backend could not load, still on previous model."
-        bot.answer_callback_query(call.id, "Switched to Needle")
-        bot.edit_message_text(msg, chat_id, call.message.message_id)
-        return
-
-    if data == "switch_functiongemma":
-        from agent.model_manager import switch_model
-        from agent.core.engine import reload_backend
-        bot.answer_callback_query(call.id)
-        bot.edit_message_text("Switching AI model, loading...",
-                              chat_id, call.message.message_id)
-        success, msg = switch_model("functiongemma")
-        if success:
-            reload_backend()
-            from agent.model_manager import get_active_model as _am2
-            if _am2() != "functiongemma":
-                msg += "\nNote: backend could not load, still on previous model."
-        bot.answer_callback_query(call.id, "Switched to FunctionGemma")
         bot.edit_message_text(msg, chat_id, call.message.message_id)
         return
 
@@ -207,6 +239,27 @@ def _handle_callback(bot, call):
             parse_mode="HTML",
             reply_markup=_build_main_keyboard()
         )
+        return
+
+    if data.startswith("theme_"):
+        key = data[len("theme_"):]
+        bot.answer_callback_query(call.id)
+        ok, msg = _set_widget_theme(key)
+
+
+        if ok:
+            from agent.desktop_widget.config import load_config
+            from agent.desktop_widget.config import THEMES
+            active = load_config().get("theme", "midnight")
+            bot.edit_message_text(
+                msg, chat_id, call.message.message_id, parse_mode="HTML",
+                reply_markup=_build_theme_keyboard())
+
+            
+        else:
+            bot.edit_message_text(
+                msg, chat_id, call.message.message_id, parse_mode="HTML",
+                reply_markup=_build_theme_keyboard())
         return
 
     if data == "__show_model__":
@@ -285,7 +338,8 @@ def _get_help_text():
         "• <code>/processes</code> — Running apps\n"
         "• <code>/stats</code> — CPU/RAM usage\n"
         "• <code>/temp</code> — Temperature\n"
-        "• <code>/model</code> — Switch AI model\n\n"
+        "• <code>/model</code> — Switch AI model\n"
+        "• <code>/theme</code> — Widget theme & pet look\n\n"
         "💡 <b>Natural Language:</b>\n"
         "Just type what you want:\n"
         "• \"open firefox\"\n"
@@ -462,6 +516,35 @@ def start_telegram(token: str):
             f"Select a model:",
             reply_markup=_build_model_keyboard()
         )
+
+    @bot.message_handler(commands=["theme", "themes"])
+    def cmd_theme(message):
+        if not _guard(bot, message.chat.id):
+            return
+
+        
+        from agent.desktop_widget.config import THEMES, load_config
+        args = message.text.split(maxsplit=1)
+        if len(args) > 1 and args[1].strip():
+
+
+            ok, msg = _set_widget_theme(args[1])
+            if ok:
+                bot.reply_to(message, msg, parse_mode="HTML")
+            else:
+                bot.reply_to(message, msg, parse_mode="HTML",
+                             reply_markup=_build_theme_keyboard())
+            return
+
+        
+        current = load_config().get("theme", "midnight")
+        bot.reply_to(
+            message,
+            f"Current theme: <b>{THEMES.get(current, {}).get('label', current)}"
+            f"</b> (<code>{current}</code>)\n\n"
+            f"Pick one — or send <code>/theme anime</code>:",
+            parse_mode="HTML",
+            reply_markup=_build_theme_keyboard())
 
     @bot.message_handler(commands=["webcam", "camera"])
     def cmd_webcam(message):

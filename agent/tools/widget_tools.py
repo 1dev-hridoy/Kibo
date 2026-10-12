@@ -2,6 +2,9 @@
 Desktop widget tool — set/clear custom messages shown in the top bar widget.
 """
 
+import json
+import os
+
 import needle
 
 
@@ -39,6 +42,51 @@ def widget_clear() -> str:
     _clear_msg()
     return "Widget message cleared."
 
+
+
+@needle.tool
+def widget_theme(theme: str = "") -> str:
+    """Change the desktop widget's colour theme.
+    Available themes:
+      anime    - Sakura Night, full anime vibe (drifting petals, moon, sparkles)
+      sakura   - softer, lighter sakura sky
+      midnight - the original dark space look (default)
+      paper    - light background
+    Say: 'set the widget theme to anime', 'make kibo anime themed',
+    'switch to the sakura theme', 'go back to midnight'.
+    Call with no name to list the available themes."""
+    from agent.desktop_widget.config import THEMES, apply_theme, save_config
+
+
+
+    name = (theme or "").strip().lower()
+    if not name:
+        return "Available widget themes: " + ", ".join(
+            f"{k} ({THEMES[k]['label']})" for k in THEMES)
+
+
+    aliases = {
+        "sakura night": "anime", "anime night": "anime", "pink": "anime",
+        "default": "midnight", "space": "midnight", "dark": "midnight",
+        "light": "paper", "white": "paper", "bright": "paper",
+    }
+    name = aliases.get(name, name)
+    if name not in THEMES:
+        return (f"Unknown theme '{theme}'. Available: " + ", ".join(THEMES))
+
+
+
+    path = os.path.expanduser("~/.config/kibo/widget_config.json")
+    try:
+        with open(path) as f:
+            cfg = json.load(f)
+    except Exception:
+        cfg = {}
+
+    key = apply_theme(cfg, name)
+    save_config(cfg)
+    return (f"Widget theme set to {THEMES[key]['label']}. "
+            f"A running widget picks it up within a second.")
 
 
 @needle.tool
