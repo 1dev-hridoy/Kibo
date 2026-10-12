@@ -91,8 +91,12 @@ def _agent_loop(text, max_steps=4):
     the confidence threshold are never executed (tiny models emit
     plausible-looking but spurious calls on small talk)."""
     begin_task(text[:60])
-    _ensure_backend().reset()
-    response = _ensure_backend().complete(text)
+    backend = _ensure_backend()
+    backend.reset()
+
+  
+    names = getattr(backend, "shortlist", lambda q, k=8: None)(text)
+    response = backend.complete(text, names)
     executed, results = [], []
     for _ in range(max_steps):
         calls = response.get("function_calls") or []
@@ -130,8 +134,8 @@ def _agent_loop(text, max_steps=4):
                 results.append(f"Error: {exc}")
             finally:
                 end_tool(name)
-        _ensure_backend().reset()
-        response = _ensure_backend().complete(json.dumps(results))
+        backend.reset()
+        response = backend.complete(json.dumps(results), names)
     return response, executed, results
 
 

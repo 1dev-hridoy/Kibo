@@ -506,6 +506,10 @@ def get_models_list():
     return "\n".join(lines)
 
 
+_ROUTER_ON = os.environ.get("KIBO_TOOL_ROUTER", "on").strip().lower() \
+    not in ("off", "0", "false", "no")
+
+
 class NeedleBackend:
     """Wrapper around cactus-needle."""
 
@@ -559,14 +563,34 @@ class LlamaCppBackend:
         print(f"[Model] {self.name} loaded in {time.time() - t0:.1f}s")
 
     def set_tools(self, tools):
-        self.tools = {fn.__name__: fn for fn in tools}
-        self.tool_schemas = self._build_tool_schemas(tools)
 
-    def _build_tool_schemas(self, tools):
-        """Build a compact tool-name + docstring list for the prompt."""
+
+
+      
+        from agent.core.tool_router import ToolRouter
+        self.tools = {fn.__name__: fn for fn in tools}
+        self._tool_list = list(tools)
+        self._router = ToolRouter(tools)
+        self.tool_schemas = self._build_tool_schemas(tools)
+        print(f"[Model] {len(self.tools)} tools indexed "
+              f"({len(self._router.idf)} terms)")
+
+    def shortlist(self, query, k=8):
+        """Top-k tool names relevant to the query (see core/tool_router)."""
+        return self._router.route(query, k)
+
+    def _build_tool_schemas(self, tools, names=None):
+        """Build a compact tool-name + docstring list for the prompt.
+
+        With `names` set, only those tools are rendered — this is what
+        keeps the prompt inside the context window.
+        """
+        keep = set(names) if names is not None else None
         schemas = []
         for fn in tools:
             name = fn.__name__
+            if keep is not None and name not in keep:
+                continue
             doc = (fn.__doc__ or "").strip().split("\n")[0]
             schemas.append(f"- {name}: {doc}")
         return "\n".join(schemas)
@@ -574,12 +598,14 @@ class LlamaCppBackend:
     def reset(self):
         pass
 
-    def _system_text(self):
-    
+    def _system_text(self, names=None):
+        tools = self.tool_schemas if names is None else \
+            self._build_tool_schemas(self._tool_list, names)
+
         extra = "\n/no_think" if self.family == "chatml" else ""
         return (
             "You are Kibo, a function calling AI assistant.\n"
-            f"You have access to these tools:\n{self.tool_schemas}\n\n"
+            f"You have access to these tools:\n{tools}\n\n"
             "To call a tool, respond with ONLY this JSON object:\n"
             '{"type": "call", "function_calls": '
             '[{"name": "tool_name", "arguments": {}}]}\n\n'
@@ -590,9 +616,9 @@ class LlamaCppBackend:
 
 
 
-    def _build_prompt(self, user_text):
+    def _build_prompt(self, user_text, names=None):
         """Build a prompt using the model family's chat markers."""
-        system = self._system_text()
+        system = self._system_text(names)
         if self.family == "gemma":
             return (
                 f"<start_of_turn>user\n{system}\n\n{user_text}<end_of_turn>\n"
@@ -606,9 +632,15 @@ class LlamaCppBackend:
             f"<|im_start|>assistant\n"
         )
 
-    def complete(self, text):
-        """Run the model and return the standard engine envelope."""
-        prompt = self._build_prompt(text)
+    def complete(self, text, tool_names=None):
+        """Run the model and return the standard engine envelope.
+
+        `tool_names` shortlists the tools shown in the system prompt.
+        None keeps the full list (KIBO_TOOL_ROUTER=off behaviour).
+        """
+        if tool_names is not None and not _ROUTER_ON:
+            tool_names = None
+        prompt = self._build_prompt(text, tool_names)
         output = self.llm(
             prompt,
             max_tokens=256,
